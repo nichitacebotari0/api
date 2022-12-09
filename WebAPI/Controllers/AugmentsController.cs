@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAPI.Infrastructure.Mapping;
 using WebAPI.Models;
@@ -8,6 +9,7 @@ namespace WebAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Policy = "AugmentEdit")]
     public class AugmentsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -34,6 +36,7 @@ namespace WebAPI.Controllers
 
         // GET: api/Augments
         [HttpGet]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<AugmentViewModel>>> GetAugment()
         {
             var augments = await _context.Augment.ToListAsync();
@@ -43,6 +46,7 @@ namespace WebAPI.Controllers
 
         // GET: api/Augments/5
         [HttpGet("{id}")]
+        [AllowAnonymous]
         public async Task<ActionResult<AugmentViewModel>> GetAugment(int id)
         {
             var augment = await _context.Augment.FindAsync(id);

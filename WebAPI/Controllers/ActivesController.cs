@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +12,7 @@ namespace WebAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Policy = "AugmentEdit")]
     public class ActivesController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -22,6 +24,7 @@ namespace WebAPI.Controllers
 
         // GET: api/Actives
         [HttpGet]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<Active>>> GetActive()
         {
             return await _context.Active.ToListAsync();
@@ -29,6 +32,7 @@ namespace WebAPI.Controllers
 
         // GET: api/Actives/5
         [HttpGet("{id}")]
+        [AllowAnonymous]
         public async Task<ActionResult<Active>> GetActive(int id)
         {
             var active = await _context.Active.FindAsync(id);

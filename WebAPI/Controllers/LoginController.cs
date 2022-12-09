@@ -3,10 +3,8 @@ using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.Net.Http.Headers;
 using WebAPI.Models.Discord;
 
 namespace WebAPI.Controllers
@@ -45,16 +43,6 @@ namespace WebAPI.Controllers
             var serializerOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
             var discordAccessToken = JsonSerializer.Deserialize<DiscordAccessToken>(accessResponseBody, serializerOptions);
 
-            // get user info
-            //var userInfoRequest = new HttpRequestMessage(HttpMethod.Get, "https://discord.com/api/users/@me");
-            //userInfoRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            //userInfoRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", discordAccessToken?.access_token);
-            //var userInfoResponse = await httpClient.SendAsync(userInfoRequest, HttpContext.RequestAborted);
-            //userInfoResponse.EnsureSuccessStatusCode();
-
-            //var userInfoBody = JsonDocument.Parse(await userInfoResponse.Content.ReadAsStringAsync()).RootElement;
-            //var user = JsonSerializer.Deserialize<DiscordUser>(userInfoBody, serializerOptions);
-
             // get guild member info
             var guildRequest = new HttpRequestMessage(HttpMethod.Get, "https://discord.com/api/users/@me/guilds/671787052572082176/member");
             guildRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -67,19 +55,18 @@ namespace WebAPI.Controllers
 
 
             var permClaims = new List<Claim>();
-            var regionalRoles = new[] { "807300064577323114", "807299956326137876", "807300007538982964", "807308381177774100", "807310795532796004", "842899953973329920" };
-            var regionRole = guilds.roles.Intersect(regionalRoles).FirstOrDefault();
+            var regionRoles = guilds?.roles.Intersect(DiscordConstants.FangsRegionRoles);
 
-            if (regionRole == null)
+            if (!regionRoles.Any())
             {
                 return Unauthorized("Need to be in the Fangs Server to authenticate");
             }
 
-            permClaims.Add(new Claim("regionRoleId", regionRole));
-            permClaims.Add(new Claim("discordMod", guilds.roles.Contains("804466206299127818").ToString()));
-            permClaims.Add(new Claim("discordDev", guilds.roles.Contains("775489503623118869").ToString()));
-            permClaims.Add(new Claim("discordId", guilds.user.id));
-            permClaims.Add(new Claim("discordNick", guilds.user.username));
+            permClaims.Add(new Claim(DiscordConstants.Claim_userId, guilds.user.id));
+            permClaims.Add(new Claim(DiscordConstants.Claim_regionId, string.Join(",", regionRoles)));
+            permClaims.Add(new Claim(DiscordConstants.Claim_ismod, guilds?.roles.Contains(DiscordConstants.FangsRole_Moderator).ToString()));
+            permClaims.Add(new Claim(DiscordConstants.Claim_isdev, guilds?.roles.Contains(DiscordConstants.FangsRole_Developer).ToString()));
+            permClaims.Add(new Claim(DiscordConstants.Claim_userNick, guilds.user.username));
 
             // generate jwt
             var issuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration.GetValue<string>("Jwt:EncryptionKey")));
@@ -87,7 +74,6 @@ namespace WebAPI.Controllers
             var validAudience = configuration.GetValue<string>("Jwt:Audience");
 
             var credentials = new SigningCredentials(issuerSigningKey, SecurityAlgorithms.HmacSha256);
-
 
             var token = new JwtSecurityToken(
                 validIssuer,
@@ -98,9 +84,21 @@ namespace WebAPI.Controllers
 
             var jwt_Token = new JwtSecurityTokenHandler().WriteToken(token);
 
-            Response.Cookies.Append("auth_token", jwt_Token
-                , new CookieOptions() { Secure = true, HttpOnly = true, SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Strict }
+            Response.Cookies.Append("auth_token", jwt_Token,
+                new CookieOptions() { Secure = true, HttpOnly = true, SameSite = SameSiteMode.Strict, MaxAge = TimeSpan.FromMinutes(4) }
                 );
+            Response.Cookies.Append(DiscordConstants.Claim_userId, permClaims[0].Value,
+               new CookieOptions() { Secure = true, SameSite = SameSiteMode.Strict, MaxAge = TimeSpan.FromMinutes(4) }
+               );
+            Response.Cookies.Append(DiscordConstants.Claim_ismod, permClaims[2].Value,
+               new CookieOptions() { Secure = true, SameSite = SameSiteMode.Strict, MaxAge = TimeSpan.FromMinutes(4) }
+               );
+            Response.Cookies.Append(DiscordConstants.Claim_isdev, permClaims[3].Value,
+               new CookieOptions() { Secure = true, SameSite = SameSiteMode.Strict, MaxAge = TimeSpan.FromMinutes(4) }
+               );
+            Response.Cookies.Append(DiscordConstants.Claim_userNick, permClaims[4].Value,
+              new CookieOptions() { Secure = true, SameSite = SameSiteMode.Strict, MaxAge = TimeSpan.FromMinutes(4) }
+              );
             return Ok();
         }
 

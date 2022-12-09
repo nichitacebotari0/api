@@ -1,14 +1,16 @@
 using System.Text;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using WebAPI.Infrastructure.Authorization;
 using WebAPI.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 const string localCorsPolicy = "allow_local";
+const string fangsbuilderCorsPolicy = "allow_local";
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(name: localCorsPolicy,
@@ -19,6 +21,16 @@ builder.Services.AddCors(options =>
                               "https://localhost:4200")
                           .AllowAnyMethod()
                           .AllowAnyHeader();
+                      });
+    options.AddPolicy(name: fangsbuilderCorsPolicy,
+                      policy =>
+                      {
+                          policy.WithOrigins(
+                              "http://fangsbuilder.com",
+                              "https://fangsbuilder.com")
+                          .AllowAnyMethod()
+                          .AllowAnyHeader()
+                          .AllowCredentials();
                       });
 });
 
@@ -65,6 +77,12 @@ builder.Services.AddAuthentication(options =>
             return Task.CompletedTask;
         }
     };
+});
+
+builder.Services.AddSingleton<IAuthorizationHandler, AugmentEditAuthorizationHandler>();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AugmentEdit", policy => policy.AddRequirements(new AugmentEditRequirement()));
 });
 
 var app = builder.Build();

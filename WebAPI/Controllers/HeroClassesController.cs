@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +12,7 @@ namespace WebAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Policy = "AugmentEdit")]
     public class HeroClassesController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -22,6 +24,7 @@ namespace WebAPI.Controllers
 
         // GET: api/HeroClasses
         [HttpGet]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<HeroClass>>> GetHeroClass()
         {
             return await _context.HeroClass.ToListAsync();
@@ -29,6 +32,7 @@ namespace WebAPI.Controllers
 
         // GET: api/HeroClasses/5
         [HttpGet("{id}")]
+        [AllowAnonymous]
         public async Task<ActionResult<HeroClass>> GetHeroClass(int id)
         {
             var heroClass = await _context.HeroClass.FindAsync(id);

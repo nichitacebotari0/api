@@ -12,7 +12,7 @@ namespace WebAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [AllowAnonymous]
+    [Authorize(Policy = "AugmentEdit")]
     public class AugmentCategoriesController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -24,6 +24,7 @@ namespace WebAPI.Controllers
 
         // GET: api/AugmentCategories
         [HttpGet]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<AugmentCategory>>> GetAugmentCategory()
         {
             return await _context.AugmentCategory.ToListAsync();
@@ -31,6 +32,7 @@ namespace WebAPI.Controllers
 
         // GET: api/AugmentCategories/5
         [HttpGet("{id}")]
+        [AllowAnonymous]
         public async Task<ActionResult<AugmentCategory>> GetAugmentCategory(int id)
         {
             var augmentCategory = await _context.AugmentCategory.FindAsync(id);
