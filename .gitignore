@@ -3,8 +3,6 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
-appsettings.Development.json
-
 # User-specific files
 *.rsuser
 *.suo
@@ -367,3 +365,4 @@ FodyWeavers.xsd
 # Ignore local db
 *.db
 database.db*
+/WebAPI/appsettings.Production.json
