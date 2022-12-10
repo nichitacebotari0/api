@@ -26,7 +26,8 @@ builder.Services.AddCors(options =>
                       policy =>
                       {
                           policy.WithOrigins(
-                              "https://fangsbuilder.com")
+                              builder.Configuration.GetValue<string>("BaseUrl"),
+                              "https:://api.fangsbuilder.com")
                           .AllowAnyMethod()
                           .AllowAnyHeader()
                           .AllowCredentials();

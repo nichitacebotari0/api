@@ -15,11 +15,13 @@ namespace WebAPI.Controllers
     {
         private readonly IConfiguration configuration;
         private readonly IHttpClientFactory httpClientFactory;
+        private readonly ILogger<LoginController> logger;
 
-        public LoginController(IConfiguration configuration, IHttpClientFactory httpClientFactory)
+        public LoginController(IConfiguration configuration, IHttpClientFactory httpClientFactory, ILogger<LoginController> logger)
         {
             this.configuration = configuration;
             this.httpClientFactory = httpClientFactory;
+            this.logger = logger;
         }
 
         [HttpGet("GetToken")]
@@ -37,6 +39,7 @@ namespace WebAPI.Controllers
                 {"redirect_uri", configuration.GetValue<string>("BaseUrl") +  "discord-redirect" }
             };
             accessRequest.Content = new FormUrlEncodedContent(accessRequestBody);
+            this.logger.LogInformation("Requesting discord token, redirect uri:" + accessRequestBody["redirect_uri"]);
             var accessResponse = await httpClient.SendAsync(accessRequest, HttpContext.RequestAborted).ConfigureAwait(false);
             accessResponse.EnsureSuccessStatusCode();
             var accessResponseBody = JsonDocument.Parse(await accessResponse.Content.ReadAsStringAsync()).RootElement;
@@ -86,19 +89,19 @@ namespace WebAPI.Controllers
             var jwt_Token = new JwtSecurityTokenHandler().WriteToken(token);
 
             Response.Cookies.Append("auth_token", jwt_Token,
-                new CookieOptions() { Secure = true, HttpOnly = true, SameSite = SameSiteMode.Strict, MaxAge = expiration }
+                new CookieOptions() { Secure = true, HttpOnly = true, SameSite = SameSiteMode.None, MaxAge = expiration, Domain = ".fangsbuilder.com" }
                 );
             Response.Cookies.Append(DiscordConstants.Claim_userId, permClaims[0].Value,
-               new CookieOptions() { Secure = true, SameSite = SameSiteMode.Strict, MaxAge = expiration }
+               new CookieOptions() { Secure = true, SameSite = SameSiteMode.None, MaxAge = expiration, Domain = ".fangsbuilder.com" }
                );
             Response.Cookies.Append(DiscordConstants.Claim_ismod, permClaims[2].Value,
-               new CookieOptions() { Secure = true, SameSite = SameSiteMode.Strict, MaxAge = expiration }
+               new CookieOptions() { Secure = true, SameSite = SameSiteMode.None, MaxAge = expiration, Domain = ".fangsbuilder.com" }
                );
             Response.Cookies.Append(DiscordConstants.Claim_isdev, permClaims[3].Value,
-               new CookieOptions() { Secure = true, SameSite = SameSiteMode.Strict, MaxAge = expiration }
+               new CookieOptions() { Secure = true, SameSite = SameSiteMode.None, MaxAge = expiration, Domain = ".fangsbuilder.com" }
                );
             Response.Cookies.Append(DiscordConstants.Claim_userNick, permClaims[4].Value,
-              new CookieOptions() { Secure = true, SameSite = SameSiteMode.Strict, MaxAge = expiration }
+              new CookieOptions() { Secure = true, SameSite = SameSiteMode.None, MaxAge = expiration, Domain = ".fangsbuilder.com" }
               );
             return Ok();
         }
