@@ -10,7 +10,7 @@ using WebAPI.Models;
 var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 const string localCorsPolicy = "allow_local";
-const string fangsbuilderCorsPolicy = "allow_local";
+const string fangsbuilderCorsPolicy = "allow_fangsbuilder";
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(name: localCorsPolicy,
@@ -26,7 +26,6 @@ builder.Services.AddCors(options =>
                       policy =>
                       {
                           policy.WithOrigins(
-                              "http://fangsbuilder.com",
                               "https://fangsbuilder.com")
                           .AllowAnyMethod()
                           .AllowAnyHeader()
@@ -114,6 +113,7 @@ if (app.Environment.IsDevelopment())
 {
     app.UseCors(localCorsPolicy);
 }
+app.UseCors(fangsbuilderCorsPolicy);
 
 app.UseHttpsRedirection();
 app.UseRouting();
