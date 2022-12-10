@@ -366,3 +366,4 @@ FodyWeavers.xsd
 
 # Ignore local db
 *.db
+database.db*

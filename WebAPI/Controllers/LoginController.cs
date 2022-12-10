@@ -75,29 +75,30 @@ namespace WebAPI.Controllers
 
             var credentials = new SigningCredentials(issuerSigningKey, SecurityAlgorithms.HmacSha256);
 
+            var expiration = TimeSpan.FromDays(6);
             var token = new JwtSecurityToken(
                 validIssuer,
                 validAudience,
                 permClaims,
-                expires: DateTime.Now.AddMinutes(5),
+                expires: DateTime.Now.Add(expiration),
                 signingCredentials: credentials);
 
             var jwt_Token = new JwtSecurityTokenHandler().WriteToken(token);
 
             Response.Cookies.Append("auth_token", jwt_Token,
-                new CookieOptions() { Secure = true, HttpOnly = true, SameSite = SameSiteMode.Strict, MaxAge = TimeSpan.FromMinutes(4) }
+                new CookieOptions() { Secure = true, HttpOnly = true, SameSite = SameSiteMode.Strict, MaxAge = expiration }
                 );
             Response.Cookies.Append(DiscordConstants.Claim_userId, permClaims[0].Value,
-               new CookieOptions() { Secure = true, SameSite = SameSiteMode.Strict, MaxAge = TimeSpan.FromMinutes(4) }
+               new CookieOptions() { Secure = true, SameSite = SameSiteMode.Strict, MaxAge = expiration }
                );
             Response.Cookies.Append(DiscordConstants.Claim_ismod, permClaims[2].Value,
-               new CookieOptions() { Secure = true, SameSite = SameSiteMode.Strict, MaxAge = TimeSpan.FromMinutes(4) }
+               new CookieOptions() { Secure = true, SameSite = SameSiteMode.Strict, MaxAge = expiration }
                );
             Response.Cookies.Append(DiscordConstants.Claim_isdev, permClaims[3].Value,
-               new CookieOptions() { Secure = true, SameSite = SameSiteMode.Strict, MaxAge = TimeSpan.FromMinutes(4) }
+               new CookieOptions() { Secure = true, SameSite = SameSiteMode.Strict, MaxAge = expiration }
                );
             Response.Cookies.Append(DiscordConstants.Claim_userNick, permClaims[4].Value,
-              new CookieOptions() { Secure = true, SameSite = SameSiteMode.Strict, MaxAge = TimeSpan.FromMinutes(4) }
+              new CookieOptions() { Secure = true, SameSite = SameSiteMode.Strict, MaxAge = expiration }
               );
             return Ok();
         }

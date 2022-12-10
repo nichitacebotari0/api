@@ -15,5 +15,7 @@ namespace WebAPI.Models
         public DbSet<AugmentCategory> AugmentCategory { get; set; }
         public DbSet<AbilityType> AbilityType { get; set; }
         public DbSet<Active> Active { get; set; }
+        public DbSet<Artifact> Artifact { get; set; }
+        public DbSet<ArtifactType> ArtifactType { get; set; }
     }
 }
