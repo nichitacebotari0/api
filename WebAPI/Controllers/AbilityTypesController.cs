@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAPI.Models;
@@ -11,6 +7,7 @@ namespace WebAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Policy = "AugmentEdit")]
     public class AbilityTypesController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -22,6 +19,7 @@ namespace WebAPI.Controllers
 
         // GET: api/AbilityTypes
         [HttpGet]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<AbilityType>>> GetAbilityType()
         {
             return await _context.AbilityType.ToListAsync();
@@ -29,6 +27,7 @@ namespace WebAPI.Controllers
 
         // GET: api/AbilityTypes/5
         [HttpGet("{id}")]
+        [AllowAnonymous]
         public async Task<ActionResult<AbilityType>> GetAbilityType(int id)
         {
             var abilityType = await _context.AbilityType.FindAsync(id);
