@@ -89,19 +89,19 @@ namespace WebAPI.Controllers
             var jwt_Token = new JwtSecurityTokenHandler().WriteToken(token);
 
             Response.Cookies.Append("auth_token", jwt_Token,
-                new CookieOptions() { Secure = true, HttpOnly = true, SameSite = SameSiteMode.None, MaxAge = expiration, Domain = ".fangsbuilder.com" }
+                new CookieOptions() { Secure = true, HttpOnly = true, SameSite = SameSiteMode.None, MaxAge = expiration, Domain = ".fangsbuilder.com", IsEssential = true }
                 );
             Response.Cookies.Append(DiscordConstants.Claim_userId, permClaims[0].Value,
-               new CookieOptions() { Secure = true, SameSite = SameSiteMode.None, MaxAge = expiration, Domain = ".fangsbuilder.com" }
+               new CookieOptions() { Secure = true, SameSite = SameSiteMode.None, MaxAge = expiration, Domain = ".fangsbuilder.com", IsEssential=true }
                );
             Response.Cookies.Append(DiscordConstants.Claim_ismod, permClaims[2].Value,
-               new CookieOptions() { Secure = true, SameSite = SameSiteMode.None, MaxAge = expiration, Domain = ".fangsbuilder.com" }
+               new CookieOptions() { Secure = true, SameSite = SameSiteMode.None, MaxAge = expiration, Domain = ".fangsbuilder.com", IsEssential = true }
                );
             Response.Cookies.Append(DiscordConstants.Claim_isdev, permClaims[3].Value,
-               new CookieOptions() { Secure = true, SameSite = SameSiteMode.None, MaxAge = expiration, Domain = ".fangsbuilder.com" }
+               new CookieOptions() { Secure = true, SameSite = SameSiteMode.None, MaxAge = expiration, Domain = ".fangsbuilder.com", IsEssential = true }
                );
             Response.Cookies.Append(DiscordConstants.Claim_userNick, permClaims[4].Value,
-              new CookieOptions() { Secure = true, SameSite = SameSiteMode.None, MaxAge = expiration, Domain = ".fangsbuilder.com" }
+              new CookieOptions() { Secure = true, SameSite = SameSiteMode.None, MaxAge = expiration, Domain = ".fangsbuilder.com", IsEssential = true }
               );
             return Ok();
         }
