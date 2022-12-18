@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using WebAPI.Infrastructure;
 using WebAPI.Infrastructure.Authorization;
 using WebAPI.Models;
 
@@ -49,6 +50,7 @@ builder.Services.AddIdentityCore<ApplicationUser>(
         options.SignIn.RequireConfirmedAccount = false;
     })
     .AddEntityFrameworkStores<ApplicationDbContext>();
+builder.Services.AddHostedService<SqliteBackupHostedService>();
 
 builder.Services.AddAuthentication(options =>
 {
