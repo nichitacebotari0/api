@@ -85,6 +85,7 @@ builder.Services.AddSingleton<IAuthorizationHandler, AugmentEditAuthorizationHan
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AugmentEdit", policy => policy.AddRequirements(new AugmentEditRequirement()));
+    options.AddPolicy("UserBuildEdit", policy => policy.AddRequirements(new BuildEditRequirement()));
 });
 
 var app = builder.Build();
