@@ -1,6 +1,4 @@
-﻿using WebAPI.Models;
-
-namespace WebAPI.ViewModels
+﻿namespace WebAPI.ViewModels
 {
     public class BuildViewModel
     {

@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using WebAPI.Models;
 
 namespace WebAPI.Models
 {
@@ -19,5 +18,6 @@ namespace WebAPI.Models
         public DbSet<Artifact> Artifact { get; set; }
         public DbSet<ArtifactType> ArtifactType { get; set; }
         public DbSet<Build> Build { get; set; }
+        public DbSet<BuildVote> BuildVote { get; set; }
     }
 }

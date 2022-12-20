@@ -1,14 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAPI.Infrastructure.Mapping;
 using WebAPI.Models;
 using WebAPI.Models.Discord;
+using WebAPI.Services;
 using WebAPI.ViewModels;
 
 namespace WebAPI.Controllers
@@ -16,26 +12,23 @@ namespace WebAPI.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize(Policy = "UserBuildEdit")]
-    public class UserBuildsController : ControllerBase
+    public class UserBuildController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly IAugmentBuildValidationService augmentBuildValidation;
 
-        public UserBuildsController(ApplicationDbContext context)
+        public UserBuildController(ApplicationDbContext context, IAugmentBuildValidationService augmentBuildValidation)
         {
             _context = context;
+            this.augmentBuildValidation = augmentBuildValidation;
         }
 
         // GET: api/UserBuilds
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<BuildViewModel>>> GetBuild()
+        [HttpGet()]
+        [AllowAnonymous]
+        public async Task<ActionResult<IEnumerable<BuildViewModel>>> GetBuild([FromQuery] string userId)
         {
-            var userIdClaim = User.Claims.FirstOrDefault(x => x.Type == DiscordConstants.Claim_userId)?.Value;
-            if (userIdClaim == null)
-            {
-                return BadRequest("no user id present");
-            }
-            var builds = await _context.Build.Where(x => x.DiscordUserId == userIdClaim).ToListAsync();
-
+            var builds = await _context.Build.Where(x => x.DiscordUserId == userId).ToListAsync();
             return Ok(builds.Select(BuildMap.MapToViewModel));
         }
 
@@ -60,12 +53,13 @@ namespace WebAPI.Controllers
             {
                 return Forbid();
             }
+            await augmentBuildValidation.Validate(buildViewModel);
 
             build.Title = buildViewModel.Title;
             build.Augments = buildViewModel.Augments;
             build.Description = buildViewModel.Description;
             build.ModifiedAtUtc = DateTime.UtcNow;
-            _context.Entry(build).State = EntityState.Modified;
+            //_context.Entry(build).State = EntityState.Modified;
 
             try
             {
@@ -96,6 +90,7 @@ namespace WebAPI.Controllers
             {
                 return BadRequest("no user id present");
             }
+            await augmentBuildValidation.Validate(buildViewModel);
 
             var build = buildViewModel.MapToDTO();
             build.CreatedAtUtc = DateTime.UtcNow;

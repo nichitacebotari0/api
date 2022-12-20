@@ -7,6 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 using WebAPI.Infrastructure;
 using WebAPI.Infrastructure.Authorization;
 using WebAPI.Models;
+using WebAPI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
@@ -58,7 +59,6 @@ builder.Services.AddAuthentication(options =>
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
 })
-//.AddCookie()
 .AddJwtBearer(options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters
@@ -87,6 +87,7 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("AugmentEdit", policy => policy.AddRequirements(new AugmentEditRequirement()));
     options.AddPolicy("UserBuildEdit", policy => policy.AddRequirements(new BuildEditRequirement()));
 });
+builder.Services.AddScoped<IAugmentBuildValidationService, AugmentBuildValidationService>();
 
 var app = builder.Build();
 
