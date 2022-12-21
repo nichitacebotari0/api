@@ -98,7 +98,7 @@ namespace WebAPI.Controllers
             _context.Build.Add(build);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetBuild", new { id = build.Id }, buildViewModel);
+            return CreatedAtAction("GetBuild", new { id = build.Id }, build.MapToViewModel());
         }
 
         // DELETE: api/UserBuilds/5

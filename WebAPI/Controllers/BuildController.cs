@@ -43,9 +43,9 @@ namespace WebAPI.Controllers
         }
 
         [HttpGet("votes")]
-        public async Task<ActionResult<IEnumerable<BuildViewModel>>> Get([FromQuery] string stringBuildIds)
+        public async Task<ActionResult<IEnumerable<BuildViewModel>>> Get([FromQuery] string builds)
         {
-            var buildIds = stringBuildIds.Split(',').Select(x => int.Parse(x)).ToArray();
+            var buildIds = builds.Split(',').Select(x => int.Parse(x)).ToArray();
             var userIdClaim = User.Claims.FirstOrDefault(x => x.Type == DiscordConstants.Claim_userId)?.Value;
             if (userIdClaim == null)
             {
