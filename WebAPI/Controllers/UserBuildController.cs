@@ -51,7 +51,7 @@ namespace WebAPI.Controllers
             var userIdClaim = User.Claims.FirstOrDefault(x => x.Type == DiscordConstants.Claim_userId)?.Value;
             if (build.DiscordUserId != userIdClaim)
             {
-                return Forbid();
+                return Forbid("This is not your build so you cannot edit it");
             }
             await augmentBuildValidation.Validate(buildViewModel);
 

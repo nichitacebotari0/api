@@ -37,13 +37,12 @@ namespace WebAPI.Controllers
                 .Take(20)
                 .ToListAsync();
 
-
             var buildViewModels = builds.Select(BuildMap.MapToViewModel);
             return Ok(buildViewModels);
         }
 
-        [HttpGet("votes")]
-        public async Task<ActionResult<IEnumerable<BuildViewModel>>> Get([FromQuery] string builds)
+        [HttpGet("myvotes")]
+        public async Task<ActionResult<IEnumerable<BuildVoteViewModel>>> Get([FromQuery] string builds)
         {
             var buildIds = builds.Split(',').Select(x => int.Parse(x)).ToArray();
             var userIdClaim = User.Claims.FirstOrDefault(x => x.Type == DiscordConstants.Claim_userId)?.Value;
@@ -51,13 +50,13 @@ namespace WebAPI.Controllers
             {
                 return BadRequest("no user id present");
             }
-            var votes = await dbContext.BuildVote.FirstAsync(x => x.DiscordUserId == userIdClaim && buildIds.Contains(x.BuildId));
+            var votes = await dbContext.BuildVote.Where(x => x.DiscordUserId == userIdClaim && buildIds.Contains(x.BuildId)).ToListAsync();
 
-            return Ok(BuildVoteMap.MapToViewModel(votes));
+            return Ok(votes.Select(BuildVoteMap.MapToViewModel));
         }
 
-        [HttpGet("{buildId}/vote")]
-        public async Task<ActionResult<BuildViewModel>> Get(int buildId)
+        [HttpGet("{buildId}/myvote")]
+        public async Task<ActionResult<BuildVoteViewModel>> GetVote(int buildId)
         {
             var userIdClaim = User.Claims.FirstOrDefault(x => x.Type == DiscordConstants.Claim_userId)?.Value;
             if (userIdClaim == null)
@@ -77,8 +76,9 @@ namespace WebAPI.Controllers
                 return BadRequest();
             }
 
+            using var transaction = dbContext.Database.BeginTransaction();
             var vote = await dbContext.BuildVote
-                .Include(x => x.BuildId)
+                .Include(x => x.Build)
                 .FirstOrDefaultAsync(x => x.Id == id);
             if (vote == null)
             {
@@ -92,10 +92,9 @@ namespace WebAPI.Controllers
             }
 
             if (buildVoteViewModel.IsUpvote == vote.VoteValue > 0)
-                return NoContent();
+                return BadRequest();
 
             vote.VoteValue = buildVoteViewModel.IsUpvote ? 1 : -1;
-            dbContext.Entry(vote).Property(x => x.VoteValue).IsModified = true;
 
             if (buildVoteViewModel.IsUpvote)
             {
@@ -107,16 +106,15 @@ namespace WebAPI.Controllers
                 vote.Build.Upvotes -= 1;
                 vote.Build.Downvotes += 1;
             }
-            var buildEntry = dbContext.Entry(vote.Build);
-            buildEntry.Property(x => x.Upvotes).IsModified = true;
-            buildEntry.Property(x => x.Downvotes).IsModified = true;
 
             await dbContext.SaveChangesAsync();
+            transaction.Commit();
+
             return NoContent();
         }
 
         [HttpPost("vote")]
-        public async Task<IActionResult> Vote(BuildVoteViewModel buildVoteViewModel)
+        public async Task<ActionResult<BuildViewModel>> CreateVote(BuildVoteViewModel buildVoteViewModel)
         {
             var userIdClaim = User.Claims.FirstOrDefault(x => x.Type == DiscordConstants.Claim_userId)?.Value;
             if (userIdClaim == null)
@@ -124,7 +122,17 @@ namespace WebAPI.Controllers
                 return BadRequest("no user id present");
             }
 
+            using var transaction = dbContext.Database.BeginTransaction();
             var build = await dbContext.Build.FindAsync(buildVoteViewModel.BuildId);
+            if (build == null)
+            {
+                return BadRequest("such a build does not exist");
+            }
+
+            var vote = BuildVoteMap.MapToDTO(buildVoteViewModel);
+            vote.DiscordUserId = userIdClaim;
+            dbContext.BuildVote.Add(vote);
+
             if (buildVoteViewModel.IsUpvote)
             {
                 build.Upvotes += 1;
@@ -134,11 +142,37 @@ namespace WebAPI.Controllers
                 build.Downvotes += 1;
             }
 
-            var vote = BuildVoteMap.MapToDTO(buildVoteViewModel);
-            vote.DiscordUserId = userIdClaim;
-            dbContext.BuildVote.Add(vote);
-
             await dbContext.SaveChangesAsync();
+            buildVoteViewModel.Id = vote.Id;
+            transaction.Commit();
+
+            return CreatedAtAction("GetVote", new { buildId = build.Id }, buildVoteViewModel);
+        }
+
+        [HttpDelete("vote/{id}")]
+        public async Task<IActionResult> DeleteVote(int id)
+        {
+            using var transaction = dbContext.Database.BeginTransaction();
+            var vote = await dbContext.BuildVote
+                .Include(x => x.Build)
+                .FirstOrDefaultAsync(x => x.Id == id);
+            if (vote == null)
+            {
+                return NotFound();
+            }
+            
+            if (vote.VoteValue > 0)
+            {
+                vote.Build.Upvotes -= 1;
+            }
+            else
+            {
+                vote.Build.Downvotes -= 1;
+            }
+
+            dbContext.BuildVote.Remove(vote);
+            await dbContext.SaveChangesAsync();
+            transaction.Commit();
 
             return NoContent();
         }
