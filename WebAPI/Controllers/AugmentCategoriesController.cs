@@ -89,6 +89,7 @@ namespace WebAPI.Controllers
 
         // DELETE: api/AugmentCategories/5
         [HttpDelete("{id}")]
+        [Authorize(Policy = "Super")]
         public async Task<IActionResult> DeleteAugmentCategory(int id)
         {
             var augmentCategory = await _context.AugmentCategory.FindAsync(id);

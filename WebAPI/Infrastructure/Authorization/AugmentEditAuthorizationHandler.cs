@@ -8,8 +8,7 @@ namespace WebAPI.Infrastructure.Authorization
         protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, AugmentEditRequirement requirement)
         {
             var userId = context.User.Claims.FirstOrDefault(x => x.Type == DiscordConstants.Claim_userId)?.Value;
-            var hasClaim = context.User.HasClaim(x => x.Type == DiscordConstants.Claim_isdev && x.Value == "True" ||
-             x.Type == DiscordConstants.Claim_ismod && x.Value == "True");
+            var hasClaim = context.User.HasClaim(x => AugmentEditRequirement.AllowedClaims.Contains(x.Type) && x.Value == "True");
             if (AugmentEditRequirement.AllowedUsers.Contains(userId) || hasClaim)
                 context.Succeed(requirement);
 

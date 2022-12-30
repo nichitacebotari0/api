@@ -105,6 +105,7 @@ namespace WebAPI.Controllers
 
         // DELETE: api/Augments/5
         [HttpDelete("{id}")]
+        [Authorize(Policy = "Super")]
         public async Task<IActionResult> DeleteAugment(int id)
         {
             var augment = await _context.Augment.FindAsync(id);

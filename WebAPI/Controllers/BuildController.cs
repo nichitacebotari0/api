@@ -160,7 +160,13 @@ namespace WebAPI.Controllers
             {
                 return NotFound();
             }
-            
+
+            var userIdClaim = User.Claims.FirstOrDefault(x => x.Type == DiscordConstants.Claim_userId)?.Value;
+            if (vote.DiscordUserId != userIdClaim)
+            {
+                return Forbid();
+            }
+
             if (vote.VoteValue > 0)
             {
                 vote.Build.Upvotes -= 1;

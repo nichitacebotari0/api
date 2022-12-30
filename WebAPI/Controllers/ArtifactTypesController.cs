@@ -89,6 +89,7 @@ namespace WebAPI.Controllers
 
         // DELETE: api/ArtifactTypes/5
         [HttpDelete("{id}")]
+        [Authorize(Policy = "Super")]
         public async Task<IActionResult> DeleteArtifactType(int id)
         {
             var artifactType = await _context.ArtifactType.FindAsync(id);

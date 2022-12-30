@@ -103,6 +103,7 @@ namespace WebAPI.Controllers
 
         // DELETE: api/UserBuilds/5
         [HttpDelete("{id}")]
+        [Authorize(Policy = "Super")]
         public async Task<IActionResult> DeleteBuild(int id)
         {
             var build = await _context.Build.FindAsync(id);

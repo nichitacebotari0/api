@@ -83,8 +83,10 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddSingleton<IAuthorizationHandler, AugmentEditAuthorizationHandler>();
 builder.Services.AddSingleton<IAuthorizationHandler, BuildEditAuthorizationHandler>();
+builder.Services.AddSingleton<IAuthorizationHandler, SuperAuthorizationHandler>();
 builder.Services.AddAuthorization(options =>
 {
+    options.AddPolicy("Super", policy => policy.AddRequirements(new SuperAuthorizationRequirement()));
     options.AddPolicy("AugmentEdit", policy => policy.AddRequirements(new AugmentEditRequirement()));
     options.AddPolicy("UserBuildEdit", policy => policy.AddRequirements(new BuildEditRequirement()));
 });

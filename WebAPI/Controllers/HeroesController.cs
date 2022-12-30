@@ -90,6 +90,7 @@ namespace WebAPI.Controllers
 
         // DELETE: api/Heroes/5
         [HttpDelete("{id}")]
+        [Authorize(Policy = "Super")]
         public async Task<IActionResult> DeleteHero(int id)
         {
             var hero = await _context.Hero.FindAsync(id);

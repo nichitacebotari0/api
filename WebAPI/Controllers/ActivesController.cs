@@ -89,6 +89,7 @@ namespace WebAPI.Controllers
 
         // DELETE: api/Actives/5
         [HttpDelete("{id}")]
+        [Authorize(Policy = "Super")]
         public async Task<IActionResult> DeleteActive(int id)
         {
             var active = await _context.Active.FindAsync(id);

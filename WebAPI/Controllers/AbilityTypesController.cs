@@ -84,6 +84,7 @@ namespace WebAPI.Controllers
 
         // DELETE: api/AbilityTypes/5
         [HttpDelete("{id}")]
+        [Authorize(Policy = "Super")]
         public async Task<IActionResult> DeleteAbilityType(int id)
         {
             var abilityType = await _context.AbilityType.FindAsync(id);
