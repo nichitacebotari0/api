@@ -37,11 +37,16 @@ namespace WebAPI.Controllers
         // GET: api/Augments
         [HttpGet]
         [AllowAnonymous]
-        public async Task<ActionResult<IEnumerable<AugmentViewModel>>> GetAugment()
+        public async Task<ActionResult<IEnumerable<AugmentViewModel>>> GetAugment(int? heroId)
         {
-            var augments = await _context.Augment.ToListAsync();
+            IQueryable<Augment> augments = _context.Augment;
+            if (heroId.HasValue)
+            {
+                augments = augments.Where(Augment => Augment.HeroId == heroId);
+            }
+            var result = await augments.ToListAsync();
 
-            return Ok(augments.Select(AugmentMap.MapToViewModel));
+            return Ok(result.Select(AugmentMap.MapToViewModel));
         }
 
         // GET: api/Augments/5
