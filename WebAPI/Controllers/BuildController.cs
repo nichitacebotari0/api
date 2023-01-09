@@ -20,7 +20,21 @@ namespace WebAPI.Controllers
             dbContext = context;
         }
 
-        [HttpGet("{heroId}")]
+        [HttpGet("{id}")]
+        [AllowAnonymous]
+        public async Task<ActionResult<BuildViewModel>> Get(int id)
+        {
+            var build = await dbContext.Build.FindAsync(id);
+
+            if (build == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(build.MapToViewModel());
+        }
+
+        [HttpGet("hero/{heroId}")]
         [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<BuildViewModel>>> Get(int heroId, [FromQuery] uint? previousVote, [FromQuery] uint? previousId)
         {

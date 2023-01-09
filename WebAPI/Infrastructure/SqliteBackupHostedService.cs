@@ -69,7 +69,7 @@ namespace WebAPI.Infrastructure
             logger.LogInformation("successfully uploaded backup");
 
             var existingBackups = container.GetBlobs().OrderBy(blob => blob.Properties.CreatedOn).ToList();
-            if (existingBackups.Count > 14)
+            if (existingBackups.Count > 42) // every 4 hr = 6 backups per day. 6*7 = 42 backups for a week's worth. This does get messed up by restarts, which resets the timer.
             {
                 var blobName = existingBackups.First().Name;
                 var deleteBlobClient = container.GetBlobClient(blobName);
