@@ -1,12 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using WebAPI.Infrastructure;
 using WebAPI.Models;
+using WebAPI.Services;
 
 namespace WebAPI.Controllers
 {
@@ -15,11 +12,13 @@ namespace WebAPI.Controllers
     [Authorize(Policy = "AugmentEdit")]
     public class AugmentCategoriesController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ApplicationDbContext context;
+        private readonly IChangeLogger changeLogger;
 
-        public AugmentCategoriesController(ApplicationDbContext context)
+        public AugmentCategoriesController(ApplicationDbContext context, IChangeLogger changeLogger)
         {
-            _context = context;
+            this.context = context;
+            this.changeLogger = changeLogger;
         }
 
         // GET: api/AugmentCategories
@@ -27,7 +26,7 @@ namespace WebAPI.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<AugmentCategory>>> GetAugmentCategory()
         {
-            return await _context.AugmentCategory.ToListAsync();
+            return await context.AugmentCategory.ToListAsync();
         }
 
         // GET: api/AugmentCategories/5
@@ -35,7 +34,7 @@ namespace WebAPI.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<AugmentCategory>> GetAugmentCategory(int id)
         {
-            var augmentCategory = await _context.AugmentCategory.FindAsync(id);
+            var augmentCategory = await context.AugmentCategory.FindAsync(id);
 
             if (augmentCategory == null)
             {
@@ -55,11 +54,15 @@ namespace WebAPI.Controllers
                 return BadRequest();
             }
 
-            _context.Entry(augmentCategory).State = EntityState.Modified;
+            var existing = await context.AugmentCategory.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+           
+            var entry = context.Entry(augmentCategory);
+            entry.State = EntityState.Modified;
 
             try
             {
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
+                await changeLogger.Log(User, entry.Entity, existing);
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -81,8 +84,9 @@ namespace WebAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<AugmentCategory>> PostAugmentCategory(AugmentCategory augmentCategory)
         {
-            _context.AugmentCategory.Add(augmentCategory);
-            await _context.SaveChangesAsync();
+            context.AugmentCategory.Add(augmentCategory);
+            await context.SaveChangesAsync();
+            await changeLogger.Log(User, augmentCategory, null);
 
             return CreatedAtAction("GetAugmentCategory", new { id = augmentCategory.Id }, augmentCategory);
         }
@@ -92,21 +96,22 @@ namespace WebAPI.Controllers
         [Authorize(Policy = "Super")]
         public async Task<IActionResult> DeleteAugmentCategory(int id)
         {
-            var augmentCategory = await _context.AugmentCategory.FindAsync(id);
+            var augmentCategory = await context.AugmentCategory.FindAsync(id);
             if (augmentCategory == null)
             {
                 return NotFound();
             }
 
-            _context.AugmentCategory.Remove(augmentCategory);
-            await _context.SaveChangesAsync();
+            context.AugmentCategory.Remove(augmentCategory);
+            await context.SaveChangesAsync();
+            await changeLogger.Log(User, null, augmentCategory);
 
             return NoContent();
         }
 
         private bool AugmentCategoryExists(int id)
         {
-            return _context.AugmentCategory.Any(e => e.Id == id);
+            return context.AugmentCategory.Any(e => e.Id == id);
         }
     }
 }

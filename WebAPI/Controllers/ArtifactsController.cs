@@ -1,8 +1,11 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using System;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using WebAPI.Infrastructure;
 using WebAPI.Infrastructure.Mapping;
 using WebAPI.Models;
+using WebAPI.Services;
 using WebAPI.ViewModels;
 
 namespace WebAPI.Controllers
@@ -12,11 +15,13 @@ namespace WebAPI.Controllers
     [Authorize(Policy = "AugmentEdit")]
     public class ArtifactsController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ApplicationDbContext context;
+        private readonly IChangeLogger changeLogger;
 
-        public ArtifactsController(ApplicationDbContext context)
+        public ArtifactsController(ApplicationDbContext context, IChangeLogger changeLogger)
         {
-            _context = context;
+            this.context = context;
+            this.changeLogger = changeLogger;
         }
 
         // GET: api/Artifacts
@@ -24,7 +29,7 @@ namespace WebAPI.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<ArtifactViewModel>>> GetArtifact()
         {
-            var artifacts = await _context.Artifact.ToListAsync();
+            var artifacts = await context.Artifact.ToListAsync();
 
             return Ok(artifacts.Select(ArtifactMap.MapToViewModel));
         }
@@ -34,7 +39,7 @@ namespace WebAPI.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<ArtifactViewModel>> GetArtifact(int id)
         {
-            var artifact = await _context.Artifact.FindAsync(id);
+            var artifact = await context.Artifact.FindAsync(id);
 
             if (artifact == null)
             {
@@ -54,12 +59,16 @@ namespace WebAPI.Controllers
                 return BadRequest();
             }
 
+            var existing = await context.Artifact.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+
             var artifact = artifactViewModel.MapToDTO();
-            _context.Entry(artifact).State = EntityState.Modified;
+            var entry = context.Entry(artifact);
+            entry.State = EntityState.Modified;
 
             try
             {
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
+                await changeLogger.Log(User, entry.Entity, existing);
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -82,8 +91,9 @@ namespace WebAPI.Controllers
         public async Task<ActionResult<ArtifactViewModel>> PostArtifact(ArtifactViewModel artifactViewModel)
         {
             var artifact = artifactViewModel.MapToDTO();
-            _context.Artifact.Add(artifact);
-            await _context.SaveChangesAsync();
+            context.Artifact.Add(artifact);
+            await context.SaveChangesAsync();
+            await changeLogger.Log(User, artifact, null);
 
             return CreatedAtAction("GetArtifact", new { id = artifact.Id }, artifactViewModel);
         }
@@ -93,21 +103,22 @@ namespace WebAPI.Controllers
         [Authorize(Policy = "Super")]
         public async Task<IActionResult> DeleteArtifact(int id)
         {
-            var artifact = await _context.Artifact.FindAsync(id);
+            var artifact = await context.Artifact.FindAsync(id);
             if (artifact == null)
             {
                 return NotFound();
             }
 
-            _context.Artifact.Remove(artifact);
-            await _context.SaveChangesAsync();
+            context.Artifact.Remove(artifact);
+            await context.SaveChangesAsync();
+            await changeLogger.Log(User, null, artifact);
 
             return NoContent();
         }
 
         private bool ArtifactExists(int id)
         {
-            return _context.Artifact.Any(e => e.Id == id);
+            return context.Artifact.Any(e => e.Id == id);
         }
     }
 }

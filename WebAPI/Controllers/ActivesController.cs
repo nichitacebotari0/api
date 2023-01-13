@@ -1,12 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using WebAPI.Infrastructure;
 using WebAPI.Models;
+using WebAPI.Services;
 
 namespace WebAPI.Controllers
 {
@@ -15,11 +12,13 @@ namespace WebAPI.Controllers
     [Authorize(Policy = "AugmentEdit")]
     public class ActivesController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ApplicationDbContext context;
+        private readonly IChangeLogger changeLogger;
 
-        public ActivesController(ApplicationDbContext context)
+        public ActivesController(ApplicationDbContext context, IChangeLogger changeLogger)
         {
-            _context = context;
+            this.context = context;
+            this.changeLogger = changeLogger;
         }
 
         // GET: api/Actives
@@ -27,7 +26,7 @@ namespace WebAPI.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<Active>>> GetActive()
         {
-            return await _context.Active.ToListAsync();
+            return await context.Active.ToListAsync();
         }
 
         // GET: api/Actives/5
@@ -35,7 +34,7 @@ namespace WebAPI.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<Active>> GetActive(int id)
         {
-            var active = await _context.Active.FindAsync(id);
+            var active = await context.Active.FindAsync(id);
 
             if (active == null)
             {
@@ -55,11 +54,14 @@ namespace WebAPI.Controllers
                 return BadRequest();
             }
 
-            _context.Entry(active).State = EntityState.Modified;
+            var existing = await context.Active.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+            var entry = context.Entry(active);
+            entry.State = EntityState.Modified;
 
             try
             {
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
+                await changeLogger.Log(User, entry.Entity, existing);
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -81,8 +83,9 @@ namespace WebAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<Active>> PostActive(Active active)
         {
-            _context.Active.Add(active);
-            await _context.SaveChangesAsync();
+            context.Active.Add(active);
+            await context.SaveChangesAsync();
+            await changeLogger.Log(User, active, null);
 
             return CreatedAtAction("GetActive", new { id = active.Id }, active);
         }
@@ -92,21 +95,22 @@ namespace WebAPI.Controllers
         [Authorize(Policy = "Super")]
         public async Task<IActionResult> DeleteActive(int id)
         {
-            var active = await _context.Active.FindAsync(id);
+            var active = await context.Active.FindAsync(id);
             if (active == null)
             {
                 return NotFound();
             }
 
-            _context.Active.Remove(active);
-            await _context.SaveChangesAsync();
+            context.Active.Remove(active);
+            await context.SaveChangesAsync();
+            await changeLogger.Log(User, null, active);
 
             return NoContent();
         }
 
         private bool ActiveExists(int id)
         {
-            return _context.Active.Any(e => e.Id == id);
+            return context.Active.Any(e => e.Id == id);
         }
     }
 }

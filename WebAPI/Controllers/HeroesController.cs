@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using WebAPI.Infrastructure;
 using WebAPI.Infrastructure.Mapping;
 using WebAPI.Models;
+using WebAPI.Services;
 using WebAPI.ViewModels;
 
 namespace WebAPI.Controllers
@@ -12,11 +14,13 @@ namespace WebAPI.Controllers
     [Authorize(Policy = "AugmentEdit")]
     public class HeroesController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ApplicationDbContext context;
+        private readonly IChangeLogger changeLogger;
 
-        public HeroesController(ApplicationDbContext context)
+        public HeroesController(ApplicationDbContext context, IChangeLogger changeLogger)
         {
-            _context = context;
+            this.context = context;
+            this.changeLogger = changeLogger;
         }
 
         // GET: api/Heroes
@@ -24,7 +28,7 @@ namespace WebAPI.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<HeroViewModel>>> GetHero()
         {
-            var heroes = await _context.Hero.ToListAsync();
+            var heroes = await context.Hero.ToListAsync();
 
             return Ok(heroes.Select(HeroMap.MapToViewModel));
         }
@@ -34,7 +38,7 @@ namespace WebAPI.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<HeroViewModel>> GetHero(int id)
         {
-            var hero = await _context.Hero.FindAsync(id);
+            var hero = await context.Hero.FindAsync(id);
 
             if (hero == null)
             {
@@ -54,12 +58,16 @@ namespace WebAPI.Controllers
                 return BadRequest();
             }
 
+            var existing = await context.Hero.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+            
             var hero = heroViewModel.MapToDTO();
-            _context.Entry(hero).State = EntityState.Modified;
+            var entry = context.Entry(hero);
+            entry.State = EntityState.Modified;
 
             try
             {
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
+                await changeLogger.Log(User, entry.Entity, existing);
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -82,8 +90,9 @@ namespace WebAPI.Controllers
         public async Task<ActionResult<AugmentViewModel>> PostHero(HeroViewModel heroViewModel)
         {
             var hero = heroViewModel.MapToDTO();
-            _context.Hero.Add(hero);
-            await _context.SaveChangesAsync();
+            context.Hero.Add(hero);
+            await context.SaveChangesAsync();
+            await changeLogger.Log(User, hero);
 
             return CreatedAtAction("GetHero", new { id = hero.Id }, heroViewModel);
         }
@@ -93,21 +102,22 @@ namespace WebAPI.Controllers
         [Authorize(Policy = "Super")]
         public async Task<IActionResult> DeleteHero(int id)
         {
-            var hero = await _context.Hero.FindAsync(id);
+            var hero = await context.Hero.FindAsync(id);
             if (hero == null)
             {
                 return NotFound();
             }
 
-            _context.Hero.Remove(hero);
-            await _context.SaveChangesAsync();
+            context.Hero.Remove(hero);
+            await context.SaveChangesAsync();
+            await changeLogger.Log(User, null, hero);
 
             return NoContent();
         }
 
         private bool HeroExists(int id)
         {
-            return _context.Hero.Any(e => e.Id == id);
+            return context.Hero.Any(e => e.Id == id);
         }
     }
 }

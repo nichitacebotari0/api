@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using WebAPI.Infrastructure;
 using WebAPI.Infrastructure.Mapping;
 using WebAPI.Models;
 using WebAPI.Models.Discord;
+using WebAPI.Services;
 using WebAPI.ViewModels;
 
 namespace WebAPI.Controllers
@@ -14,10 +16,12 @@ namespace WebAPI.Controllers
     public class BuildController : ControllerBase
     {
         private readonly ApplicationDbContext dbContext;
+        private readonly IChangeLogger changeLogger;
 
-        public BuildController(ApplicationDbContext context)
+        public BuildController(ApplicationDbContext context, IChangeLogger changeLogger)
         {
             dbContext = context;
+            this.changeLogger = changeLogger;
         }
 
         [HttpGet("{id}")]
@@ -89,7 +93,6 @@ namespace WebAPI.Controllers
             {
                 return BadRequest();
             }
-
             using var transaction = dbContext.Database.BeginTransaction();
             var vote = await dbContext.BuildVote
                 .Include(x => x.Build)
@@ -98,6 +101,7 @@ namespace WebAPI.Controllers
             {
                 return NotFound();
             }
+            var previousVoteLog = GetVoteLog(vote);
 
             var userIdClaim = User.Claims.FirstOrDefault(x => x.Type == DiscordConstants.Claim_userId)?.Value;
             if (vote.DiscordUserId != userIdClaim)
@@ -122,6 +126,7 @@ namespace WebAPI.Controllers
             }
 
             await dbContext.SaveChangesAsync();
+            await changeLogger.Log(nameof(BuildVote), User, GetVoteLog(vote), previousVoteLog);
             transaction.Commit();
 
             return NoContent();
@@ -157,6 +162,7 @@ namespace WebAPI.Controllers
             }
 
             await dbContext.SaveChangesAsync();
+            await changeLogger.Log(User, GetVoteLog(vote));
             buildVoteViewModel.Id = vote.Id;
             transaction.Commit();
 
@@ -192,9 +198,16 @@ namespace WebAPI.Controllers
 
             dbContext.BuildVote.Remove(vote);
             await dbContext.SaveChangesAsync();
+            await changeLogger.Log(User, null, GetVoteLog(vote));
             transaction.Commit();
 
             return NoContent();
+        }
+
+
+        private static string GetVoteLog(BuildVote vote)
+        {
+            return vote.ToString() + $" buildVotes:+{vote.Build.Upvotes} -{vote.Build.Downvotes}";
         }
     }
 }

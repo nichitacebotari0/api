@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using WebAPI.Infrastructure;
 using WebAPI.Infrastructure.Mapping;
 using WebAPI.Models;
+using WebAPI.Services;
 using WebAPI.ViewModels;
 
 namespace WebAPI.Controllers
@@ -12,11 +14,13 @@ namespace WebAPI.Controllers
     [Authorize(Policy = "AugmentEdit")]
     public class AugmentsController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ApplicationDbContext context;
+        private readonly IChangeLogger changeLogger;
 
-        public AugmentsController(ApplicationDbContext context)
+        public AugmentsController(ApplicationDbContext context, IChangeLogger changeLogger)
         {
-            _context = context;
+            this.context = context;
+            this.changeLogger = changeLogger;
         }
 
         // GET: api/Augments?HeroId
@@ -39,7 +43,7 @@ namespace WebAPI.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<AugmentViewModel>>> GetAugment(int? heroId)
         {
-            IQueryable<Augment> augments = _context.Augment;
+            IQueryable<Augment> augments = context.Augment;
             if (heroId.HasValue)
             {
                 augments = augments.Where(Augment => Augment.HeroId == heroId);
@@ -54,7 +58,7 @@ namespace WebAPI.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<AugmentViewModel>> GetAugment(int id)
         {
-            var augment = await _context.Augment.FindAsync(id);
+            var augment = await context.Augment.FindAsync(id);
 
             if (augment == null)
             {
@@ -74,12 +78,16 @@ namespace WebAPI.Controllers
                 return BadRequest();
             }
 
+            var existing = await context.Augment.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+
             var augment = augmentViewModel.MapToDTO();
-            _context.Entry(augment).State = EntityState.Modified;
+            var entry = context.Entry(augment);
+            entry.State = EntityState.Modified;
 
             try
             {
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
+                await changeLogger.Log(User, entry.Entity, existing);
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -102,8 +110,9 @@ namespace WebAPI.Controllers
         public async Task<ActionResult<AugmentViewModel>> PostAugment(AugmentViewModel augmentViewModel)
         {
             var augment = augmentViewModel.MapToDTO();
-            _context.Augment.Add(augment);
-            await _context.SaveChangesAsync();
+            context.Augment.Add(augment);
+            await context.SaveChangesAsync();
+            await changeLogger.Log(User, augment, null);
 
             return CreatedAtAction("GetAugment", new { id = augment.Id }, augmentViewModel);
         }
@@ -113,21 +122,22 @@ namespace WebAPI.Controllers
         [Authorize(Policy = "Super")]
         public async Task<IActionResult> DeleteAugment(int id)
         {
-            var augment = await _context.Augment.FindAsync(id);
+            var augment = await context.Augment.FindAsync(id);
             if (augment == null)
             {
                 return NotFound();
             }
 
-            _context.Augment.Remove(augment);
-            await _context.SaveChangesAsync();
+            context.Augment.Remove(augment);
+            await context.SaveChangesAsync();
+            await changeLogger.Log(User, null, augment);
 
             return NoContent();
         }
 
         private bool AugmentExists(int id)
         {
-            return _context.Augment.Any(e => e.Id == id);
+            return context.Augment.Any(e => e.Id == id);
         }
     }
 }

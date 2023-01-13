@@ -17,5 +17,10 @@ namespace WebAPI.Models
         public DateTime ModifiedAtUtc { get; set; }
         public int HeroId { get; set; }
         public Hero Hero { get; set; }
+
+        public override string ToString()
+        {
+            return $"{Id} {Title} ;discordUser:{DiscordUserId} ;augments:{Augments} ;Hero:{HeroId} {Hero?.Name}";
+        }
     }
 }

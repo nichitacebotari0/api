@@ -8,5 +8,10 @@
         public string ImagePath { get; set; }
         public int ArtifactTypeId { get; set; }
         public ArtifactType ArtifactType { get; set; }
+
+        public override string ToString()
+        {
+            return $"{Id} {Name} ;Type:{ArtifactTypeId} {ArtifactType?.Name}";
+        }
     }
 }

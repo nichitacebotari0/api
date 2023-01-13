@@ -1,12 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using WebAPI.Infrastructure;
 using WebAPI.Models;
+using WebAPI.Services;
 
 namespace WebAPI.Controllers
 {
@@ -15,11 +12,14 @@ namespace WebAPI.Controllers
     [Authorize(Policy = "AugmentEdit")]
     public class ArtifactTypesController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ApplicationDbContext context;
+        private readonly IChangeLogger changeLogger;
 
-        public ArtifactTypesController(ApplicationDbContext context)
+        public ArtifactTypesController(ApplicationDbContext context, IChangeLogger changeLogger)
+
         {
-            _context = context;
+            this.context = context;
+            this.changeLogger = changeLogger;
         }
 
         // GET: api/ArtifactTypes
@@ -27,7 +27,7 @@ namespace WebAPI.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<ArtifactType>>> GetArtifactType()
         {
-            return await _context.ArtifactType.ToListAsync();
+            return await context.ArtifactType.ToListAsync();
         }
 
         // GET: api/ArtifactTypes/5
@@ -35,7 +35,7 @@ namespace WebAPI.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<ArtifactType>> GetArtifactType(int id)
         {
-            var artifactType = await _context.ArtifactType.FindAsync(id);
+            var artifactType = await context.ArtifactType.FindAsync(id);
 
             if (artifactType == null)
             {
@@ -55,11 +55,15 @@ namespace WebAPI.Controllers
                 return BadRequest();
             }
 
-            _context.Entry(artifactType).State = EntityState.Modified;
+            var existing = await context.ArtifactType.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+            
+            var entry = context.Entry(artifactType);
+            entry.State = EntityState.Modified;
 
             try
             {
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
+                await changeLogger.Log(User, entry.Entity, existing);
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -81,8 +85,9 @@ namespace WebAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<ArtifactType>> PostArtifactType(ArtifactType artifactType)
         {
-            _context.ArtifactType.Add(artifactType);
-            await _context.SaveChangesAsync();
+            context.ArtifactType.Add(artifactType);
+            await context.SaveChangesAsync();
+            await changeLogger.Log(User, artifactType, null);
 
             return CreatedAtAction("GetArtifactType", new { id = artifactType.Id }, artifactType);
         }
@@ -92,21 +97,22 @@ namespace WebAPI.Controllers
         [Authorize(Policy = "Super")]
         public async Task<IActionResult> DeleteArtifactType(int id)
         {
-            var artifactType = await _context.ArtifactType.FindAsync(id);
+            var artifactType = await context.ArtifactType.FindAsync(id);
             if (artifactType == null)
             {
                 return NotFound();
             }
 
-            _context.ArtifactType.Remove(artifactType);
-            await _context.SaveChangesAsync();
+            context.ArtifactType.Remove(artifactType);
+            await context.SaveChangesAsync();
+            await changeLogger.Log(User, null, artifactType);
 
             return NoContent();
         }
 
         private bool ArtifactTypeExists(int id)
         {
-            return _context.ArtifactType.Any(e => e.Id == id);
+            return context.ArtifactType.Any(e => e.Id == id);
         }
     }
 }

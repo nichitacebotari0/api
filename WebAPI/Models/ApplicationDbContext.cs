@@ -19,5 +19,6 @@ namespace WebAPI.Models
         public DbSet<ArtifactType> ArtifactType { get; set; }
         public DbSet<Build> Build { get; set; }
         public DbSet<BuildVote> BuildVote { get; set; }
+        public DbSet<Change> ChangeLog { get; set; }
     }
 }

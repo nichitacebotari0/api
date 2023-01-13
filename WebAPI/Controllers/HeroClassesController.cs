@@ -1,12 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using WebAPI.Infrastructure;
 using WebAPI.Models;
+using WebAPI.Services;
 
 namespace WebAPI.Controllers
 {
@@ -15,11 +12,13 @@ namespace WebAPI.Controllers
     [Authorize(Policy = "AugmentEdit")]
     public class HeroClassesController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ApplicationDbContext context;
+        private readonly IChangeLogger changeLogger;
 
-        public HeroClassesController(ApplicationDbContext context)
+        public HeroClassesController(ApplicationDbContext context, IChangeLogger changeLogger)
         {
-            _context = context;
+            this.context = context;
+            this.changeLogger = changeLogger;
         }
 
         // GET: api/HeroClasses
@@ -27,7 +26,7 @@ namespace WebAPI.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<HeroClass>>> GetHeroClass()
         {
-            return await _context.HeroClass.ToListAsync();
+            return await context.HeroClass.ToListAsync();
         }
 
         // GET: api/HeroClasses/5
@@ -35,7 +34,7 @@ namespace WebAPI.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<HeroClass>> GetHeroClass(int id)
         {
-            var heroClass = await _context.HeroClass.FindAsync(id);
+            var heroClass = await context.HeroClass.FindAsync(id);
 
             if (heroClass == null)
             {
@@ -55,11 +54,15 @@ namespace WebAPI.Controllers
                 return BadRequest();
             }
 
-            _context.Entry(heroClass).State = EntityState.Modified;
+            var existing = await context.HeroClass.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+
+            var entry = context.Entry(heroClass);
+            entry.State = EntityState.Modified;
 
             try
             {
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
+                await changeLogger.Log(User, entry.Entity, existing);
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -81,8 +84,9 @@ namespace WebAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<HeroClass>> PostHeroClass(HeroClass heroClass)
         {
-            _context.HeroClass.Add(heroClass);
-            await _context.SaveChangesAsync();
+            context.HeroClass.Add(heroClass);
+            await context.SaveChangesAsync();
+            await changeLogger.Log(User, heroClass);
 
             return CreatedAtAction("GetHeroClass", new { id = heroClass.Id }, heroClass);
         }
@@ -92,21 +96,22 @@ namespace WebAPI.Controllers
         [Authorize(Policy = "Super")]
         public async Task<IActionResult> DeleteHeroClass(int id)
         {
-            var heroClass = await _context.HeroClass.FindAsync(id);
+            var heroClass = await context.HeroClass.FindAsync(id);
             if (heroClass == null)
             {
                 return NotFound();
             }
 
-            _context.HeroClass.Remove(heroClass);
-            await _context.SaveChangesAsync();
+            context.HeroClass.Remove(heroClass);
+            await context.SaveChangesAsync();
+            await changeLogger.Log(User, null, heroClass);
 
             return NoContent();
         }
 
         private bool HeroClassExists(int id)
         {
-            return _context.HeroClass.Any(e => e.Id == id);
+            return context.HeroClass.Any(e => e.Id == id);
         }
     }
 }

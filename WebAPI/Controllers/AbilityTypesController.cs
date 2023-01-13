@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using WebAPI.Infrastructure;
 using WebAPI.Models;
+using WebAPI.Services;
 
 namespace WebAPI.Controllers
 {
@@ -10,11 +12,13 @@ namespace WebAPI.Controllers
     [Authorize(Policy = "AugmentEdit")]
     public class AbilityTypesController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ApplicationDbContext context;
+        private readonly IChangeLogger changeLogger;
 
-        public AbilityTypesController(ApplicationDbContext context)
+        public AbilityTypesController(ApplicationDbContext context, IChangeLogger changeLogger)
         {
-            _context = context;
+            this.context = context;
+            this.changeLogger = changeLogger;
         }
 
         // GET: api/AbilityTypes
@@ -22,7 +26,7 @@ namespace WebAPI.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<AbilityType>>> GetAbilityType()
         {
-            return await _context.AbilityType.ToListAsync();
+            return await context.AbilityType.ToListAsync();
         }
 
         // GET: api/AbilityTypes/5
@@ -30,7 +34,7 @@ namespace WebAPI.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<AbilityType>> GetAbilityType(int id)
         {
-            var abilityType = await _context.AbilityType.FindAsync(id);
+            var abilityType = await context.AbilityType.FindAsync(id);
 
             if (abilityType == null)
             {
@@ -50,11 +54,15 @@ namespace WebAPI.Controllers
                 return BadRequest();
             }
 
-            _context.Entry(abilityType).State = EntityState.Modified;
+            var existing = await context.AbilityType.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+
+            var entry = context.Entry(abilityType);
+            entry.State = EntityState.Modified;
 
             try
             {
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
+                await changeLogger.Log(User, entry.Entity, existing);
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -76,8 +84,10 @@ namespace WebAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<AbilityType>> PostAbilityType(AbilityType abilityType)
         {
-            _context.AbilityType.Add(abilityType);
-            await _context.SaveChangesAsync();
+            context.AbilityType.Add(abilityType);
+            await context.SaveChangesAsync();
+            await changeLogger.Log(User, abilityType);
+
 
             return CreatedAtAction("GetAbilityType", new { id = abilityType.Id }, abilityType);
         }
@@ -87,21 +97,22 @@ namespace WebAPI.Controllers
         [Authorize(Policy = "Super")]
         public async Task<IActionResult> DeleteAbilityType(int id)
         {
-            var abilityType = await _context.AbilityType.FindAsync(id);
+            var abilityType = await context.AbilityType.FindAsync(id);
             if (abilityType == null)
             {
                 return NotFound();
             }
 
-            _context.AbilityType.Remove(abilityType);
-            await _context.SaveChangesAsync();
+            context.AbilityType.Remove(abilityType);
+            await context.SaveChangesAsync();
+            await changeLogger.Log(User, null, abilityType);
 
             return NoContent();
         }
 
         private bool AbilityTypeExists(int id)
         {
-            return _context.AbilityType.Any(e => e.Id == id);
+            return context.AbilityType.Any(e => e.Id == id);
         }
     }
 }

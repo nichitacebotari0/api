@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using WebAPI.Infrastructure;
 using WebAPI.Infrastructure.Mapping;
 using WebAPI.Models;
 using WebAPI.Models.Discord;
@@ -14,13 +15,17 @@ namespace WebAPI.Controllers
     [Authorize(Policy = "UserBuildEdit")]
     public class UserBuildController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ApplicationDbContext context;
         private readonly IAugmentBuildValidationService augmentBuildValidation;
+        private readonly IChangeLogger changeLogger;
 
-        public UserBuildController(ApplicationDbContext context, IAugmentBuildValidationService augmentBuildValidation)
+        public UserBuildController(ApplicationDbContext context,
+            IAugmentBuildValidationService augmentBuildValidation,
+            IChangeLogger changeLogger)
         {
-            _context = context;
+            this.context = context;
             this.augmentBuildValidation = augmentBuildValidation;
+            this.changeLogger = changeLogger;
         }
 
         // GET: api/UserBuilds
@@ -28,7 +33,7 @@ namespace WebAPI.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<BuildViewModel>>> GetBuild([FromQuery] string userId)
         {
-            var builds = await _context.Build.Where(x => x.DiscordUserId == userId).ToListAsync();
+            var builds = await context.Build.Where(x => x.DiscordUserId == userId).ToListAsync();
             return Ok(builds.Select(BuildMap.MapToViewModel));
         }
 
@@ -42,12 +47,13 @@ namespace WebAPI.Controllers
                 return BadRequest();
             }
 
-            var build = await _context.Build.FindAsync(id);
+            var build = await context.Build.FindAsync(id);
             if (build == null)
             {
                 return NotFound();
             }
 
+            var previousLog = build.ToString();
             var userIdClaim = User.Claims.FirstOrDefault(x => x.Type == DiscordConstants.Claim_userId)?.Value;
             if (build.DiscordUserId != userIdClaim)
             {
@@ -63,7 +69,8 @@ namespace WebAPI.Controllers
 
             try
             {
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
+                await changeLogger.Log(nameof(Build), User, build.ToString(), previousLog);
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -95,8 +102,9 @@ namespace WebAPI.Controllers
             var build = buildViewModel.MapToDTO();
             build.CreatedAtUtc = DateTime.UtcNow;
             build.DiscordUserId = userIdClaim;
-            _context.Build.Add(build);
-            await _context.SaveChangesAsync();
+            context.Build.Add(build);
+            await context.SaveChangesAsync();
+            await changeLogger.Log(User, build);
 
             return CreatedAtAction("GetBuild", new { id = build.Id }, build.MapToViewModel());
         }
@@ -106,27 +114,28 @@ namespace WebAPI.Controllers
         [Authorize(Policy = "Super")]
         public async Task<IActionResult> DeleteBuild(int id)
         {
-            var build = await _context.Build.FindAsync(id);
+            var build = await context.Build.FindAsync(id);
             if (build == null)
             {
                 return NotFound();
             }
-            
+
             var userIdClaim = User.Claims.FirstOrDefault(x => x.Type == DiscordConstants.Claim_userId)?.Value;
             if (build.DiscordUserId != userIdClaim)
             {
                 return Forbid();
             }
 
-            _context.Build.Remove(build);
-            await _context.SaveChangesAsync();
+            context.Build.Remove(build);
+            await context.SaveChangesAsync();
+            await changeLogger.Log(User, null, build);
 
             return NoContent();
         }
 
         private bool BuildExists(int id)
         {
-            return _context.Build.Any(e => e.Id == id);
+            return context.Build.Any(e => e.Id == id);
         }
     }
 }
