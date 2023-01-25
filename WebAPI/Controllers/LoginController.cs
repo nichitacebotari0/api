@@ -90,19 +90,19 @@ namespace WebAPI.Controllers
 
             var cookieDomain = configuration.GetValue<string>("CookieDomain");
             Response.Cookies.Append("auth_token", jwt_Token,
-                new CookieOptions() { Secure = true, HttpOnly = true, SameSite = SameSiteMode.None, MaxAge = expiration, Domain = cookieDomain, IsEssential = true }
+                new CookieOptions() { Secure = true, HttpOnly = true, SameSite = SameSiteMode.Lax, MaxAge = expiration, Domain = cookieDomain, IsEssential = true }
                 );
             Response.Cookies.Append(DiscordConstants.Claim_userId, permClaims[0].Value,
-               new CookieOptions() { Secure = true, SameSite = SameSiteMode.None, MaxAge = expiration, Domain = cookieDomain, IsEssential=true }
+               new CookieOptions() { Secure = true, SameSite = SameSiteMode.Lax, MaxAge = expiration, Domain = cookieDomain, IsEssential=true }
                );
             Response.Cookies.Append(DiscordConstants.Claim_ismod, permClaims[2].Value,
-               new CookieOptions() { Secure = true, SameSite = SameSiteMode.None, MaxAge = expiration, Domain = cookieDomain, IsEssential = true }
+               new CookieOptions() { Secure = true, SameSite = SameSiteMode.Lax, MaxAge = expiration, Domain = cookieDomain, IsEssential = true }
                );
             Response.Cookies.Append(DiscordConstants.Claim_isdev, permClaims[3].Value,
-               new CookieOptions() { Secure = true, SameSite = SameSiteMode.None, MaxAge = expiration, Domain = cookieDomain, IsEssential = true }
+               new CookieOptions() { Secure = true, SameSite = SameSiteMode.Lax, MaxAge = expiration, Domain = cookieDomain, IsEssential = true }
                );
             Response.Cookies.Append(DiscordConstants.Claim_userNick, permClaims[4].Value,
-              new CookieOptions() { Secure = true, SameSite = SameSiteMode.None, MaxAge = expiration, Domain = cookieDomain, IsEssential = true }
+              new CookieOptions() { Secure = true, SameSite = SameSiteMode.Lax, MaxAge = expiration, Domain = cookieDomain, IsEssential = true }
               );
             return Ok();
         }
