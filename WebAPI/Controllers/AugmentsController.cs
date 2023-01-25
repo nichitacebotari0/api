@@ -23,31 +23,15 @@ namespace WebAPI.Controllers
             this.changeLogger = changeLogger;
         }
 
-        // GET: api/Augments?HeroId
-        //[HttpGet]
-        //public async Task<ActionResult<IEnumerable<AugmentViewModel>>> GetAugmentForHero([Required] int heroId)
-        //{
-        //    var augments = await _context.Augment
-        //        .Where(augment => augment.Id == heroId)
-        //        .ToListAsync();
-        //    if (!augments.Any())
-        //    {
-        //        return NotFound();
-        //    }
-
-        //    return Ok(augments.Select(AugmentMap.MapToViewModel));
-        //}
-
         // GET: api/Augments
         [HttpGet]
         [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<AugmentViewModel>>> GetAugment(int? heroId)
         {
-            IQueryable<Augment> augments = context.Augment;
-            if (heroId.HasValue)
-            {
-                augments = augments.Where(Augment => Augment.HeroId == heroId);
-            }
+            if (!heroId.HasValue)
+                return BadRequest("Please specify a hero id");
+
+            var augments = context.Augment.Where(Augment => Augment.HeroId == heroId);
             var result = await augments.ToListAsync();
 
             return Ok(result.Select(AugmentMap.MapToViewModel));
@@ -80,6 +64,9 @@ namespace WebAPI.Controllers
 
             var existing = await context.Augment.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
 
+            if (existing == null)
+                return NotFound();
+
             var augment = augmentViewModel.MapToDTO();
             var entry = context.Entry(augment);
             entry.State = EntityState.Modified;
@@ -91,14 +78,7 @@ namespace WebAPI.Controllers
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!AugmentExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                throw;
             }
 
             return NoContent();
@@ -133,11 +113,6 @@ namespace WebAPI.Controllers
             await changeLogger.Log(User, null, augment);
 
             return NoContent();
-        }
-
-        private bool AugmentExists(int id)
-        {
-            return context.Augment.Any(e => e.Id == id);
         }
     }
 }

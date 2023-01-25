@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+﻿using System.Reflection.Emit;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace WebAPI.Models
@@ -20,5 +21,24 @@ namespace WebAPI.Models
         public DbSet<Build> Build { get; set; }
         public DbSet<BuildVote> BuildVote { get; set; }
         public DbSet<Change> ChangeLog { get; set; }
+        public DbSet<Patch> Patch { get; set; }
+        public DbSet<AugmentSlot> AugmentSlot { get; set; }
+        public DbSet<AugmentArrangement> AugmentArrangement { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder builder)
+        {
+            base.OnModelCreating(builder);
+
+            // innitial patch
+            builder.Entity<Patch>()
+                .HasData(new Patch
+                {
+                    Id = 1,
+                    Version = "initial",
+                    GameDate = new DateTime(2022, 12, 28),
+                    Title = "Initial Patch",
+                    WebsiteTimeUtc = new DateTime(2022, 12, 01),
+                });
+        }
     }
 }
