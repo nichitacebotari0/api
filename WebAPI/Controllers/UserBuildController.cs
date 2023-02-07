@@ -16,15 +16,12 @@ namespace WebAPI.Controllers
     public class UserBuildController : ControllerBase
     {
         private readonly ApplicationDbContext context;
-        private readonly IAugmentBuildValidationService augmentBuildValidation;
         private readonly IChangeLogger changeLogger;
 
         public UserBuildController(ApplicationDbContext context,
-            IAugmentBuildValidationService augmentBuildValidation,
             IChangeLogger changeLogger)
         {
             this.context = context;
-            this.augmentBuildValidation = augmentBuildValidation;
             this.changeLogger = changeLogger;
         }
 
@@ -59,13 +56,11 @@ namespace WebAPI.Controllers
             {
                 return Forbid("This is not your build so you cannot edit it");
             }
-            await augmentBuildValidation.Validate(buildViewModel);
 
             build.Title = buildViewModel.Title;
             build.Augments = buildViewModel.Augments;
             build.Description = buildViewModel.Description;
             build.ModifiedAtUtc = DateTime.UtcNow;
-            //_context.Entry(build).State = EntityState.Modified;
 
             try
             {
@@ -97,7 +92,6 @@ namespace WebAPI.Controllers
             {
                 return BadRequest("no user id present");
             }
-            await augmentBuildValidation.Validate(buildViewModel);
 
             var build = buildViewModel.MapToDTO();
             build.CreatedAtUtc = DateTime.UtcNow;

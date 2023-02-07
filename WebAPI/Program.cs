@@ -90,7 +90,6 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("AugmentEdit", policy => policy.AddRequirements(new AugmentEditRequirement()));
     options.AddPolicy("UserBuildEdit", policy => policy.AddRequirements(new BuildEditRequirement()));
 });
-builder.Services.AddScoped<IAugmentBuildValidationService, AugmentBuildValidationService>();
 builder.Services.AddScoped<IChangeLogger, ChangeLogger>();
 
 var app = builder.Build();

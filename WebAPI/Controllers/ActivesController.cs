@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using WebAPI.Infrastructure;
+using WebAPI.Infrastructure.Mapping;
 using WebAPI.Models;
-using WebAPI.Services;
+using WebAPI.ViewModels;
 
 namespace WebAPI.Controllers
 {
@@ -13,67 +13,41 @@ namespace WebAPI.Controllers
     public class ActivesController : ControllerBase
     {
         private readonly ApplicationDbContext context;
-        private readonly IChangeLogger changeLogger;
 
-        public ActivesController(ApplicationDbContext context, IChangeLogger changeLogger)
+        public ActivesController(ApplicationDbContext context)
         {
             this.context = context;
-            this.changeLogger = changeLogger;
         }
 
         // GET: api/Actives
         [HttpGet]
         [AllowAnonymous]
-        public async Task<ActionResult<IEnumerable<Active>>> GetActive()
+        public async Task<ActionResult<IEnumerable<BoonViewModel>>> GetActive([FromQuery] int patchId)
         {
-            return await context.Active.ToListAsync();
-        }
+            var patch = await context.Patch.FindAsync(patchId);
+            if (patch == null)
+                return BadRequest("No such patch");
 
-        // GET: api/Actives/5
-        [HttpGet("{id}")]
-        [AllowAnonymous]
-        public async Task<ActionResult<Active>> GetActive(int id)
-        {
-            var active = await context.Active.FindAsync(id);
+            var patchEvents = await context.BoonEvent
+                .Include(x => x.Patch)
+                .Where(x => x.Patch.GameDate <= patch.GameDate)
+                .GroupBy(x => x.BoonId)
+                .Select(g => g.OrderByDescending(x => x.Id).First())
+                .ToListAsync();
 
-            if (active == null)
-            {
-                return NotFound();
-            }
+            var result = patchEvents.Where(x => x.Action == EventAction.SET);
 
-            return active;
+            return Ok(result.Select(BoonMap.MapToViewModel));
         }
 
         // PUT: api/Actives/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutActive(int id, Active active)
+        [HttpPut]
+        public async Task<IActionResult> PutActive(BoonViewModel boonViewModel)
         {
-            if (id != active.Id)
-            {
-                return BadRequest();
-            }
-
-            var existing = await context.Active.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
-            var entry = context.Entry(active);
-            entry.State = EntityState.Modified;
-
-            try
-            {
-                await context.SaveChangesAsync();
-                await changeLogger.Log(User, entry.Entity, existing);
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!ActiveExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
+            var boonEvent = boonViewModel.MapToDTO();
+            context.BoonEvent.Add(boonEvent);
+            await context.SaveChangesAsync();
 
             return NoContent();
         }
@@ -81,36 +55,34 @@ namespace WebAPI.Controllers
         // POST: api/Actives
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<Active>> PostActive(Active active)
+        public async Task<ActionResult<BoonViewModel>> PostActive(BoonViewModel boonViewModel)
         {
-            context.Active.Add(active);
+            using var transaction = await context.Database.BeginTransactionAsync();
+            var boonEvent = boonViewModel.MapToDTO();
+            boonEvent.BoonId = await context.BoonEvent.MaxAsync(x => x.BoonId) + 1;
+            context.BoonEvent.Add(boonEvent);
             await context.SaveChangesAsync();
-            await changeLogger.Log(User, active, null);
+            await transaction.CommitAsync();
 
-            return CreatedAtAction("GetActive", new { id = active.Id }, active);
+            return Ok(boonEvent.MapToViewModel());
         }
 
         // DELETE: api/Actives/5
         [HttpDelete("{id}")]
         [Authorize(Policy = "Super")]
-        public async Task<IActionResult> DeleteActive(int id)
+        public async Task<IActionResult> DeleteActive(int id, [FromQuery] int patchId)
         {
-            var active = await context.Active.FindAsync(id);
-            if (active == null)
+            var deleteEvent = new BoonEvent()
             {
-                return NotFound();
-            }
+                Action = EventAction.DELETE,
+                BoonId = id,
+                PatchId = patchId
+            };
 
-            context.Active.Remove(active);
+            context.BoonEvent.Add(deleteEvent);
             await context.SaveChangesAsync();
-            await changeLogger.Log(User, null, active);
 
             return NoContent();
-        }
-
-        private bool ActiveExists(int id)
-        {
-            return context.Active.Any(e => e.Id == id);
         }
     }
 }

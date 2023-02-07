@@ -3,33 +3,35 @@ using WebAPI.ViewModels;
 
 namespace WebAPI.Infrastructure.Mapping
 {
-    public static class AugmentMap
+    public static class AugmentEventMap
     {
-        public static Augment MapToDTO(this AugmentViewModel viewModel)
+        public static AugmentEvent MapToDTO(this AugmentViewModel viewModel)
         {
-            return new Augment()
+            return new AugmentEvent()
             {
-                Id = viewModel.Id,
+                AugmentId = viewModel.Id,
                 Name = viewModel.Name,
                 Description = viewModel.Description,
                 ImagePath = viewModel.ImagePath,
                 AugmentCategoryId = viewModel.AugmentCategoryId,
                 AbilityTypeId = viewModel.AbilityTypeId,
-                HeroId = viewModel.HeroId
+                HeroId = viewModel.HeroId,
+                PatchId = viewModel.PatchId,
             };
         }
 
-        public static AugmentViewModel MapToViewModel(this Augment model)
+        public static AugmentViewModel MapToViewModel(this AugmentEvent model)
         {
             return new AugmentViewModel()
             {
-                Id = model.Id,
+                Id = model.AugmentId,
                 Name = model.Name,
                 Description = model.Description,
                 ImagePath = model.ImagePath,
                 AugmentCategoryId = model.AugmentCategoryId,
                 AbilityTypeId = model.AbilityTypeId,
-                HeroId = model.HeroId
+                HeroId = model.HeroId,
+                PatchId = model.PatchId,
             };
         }
     }

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WebAPI.Models;
 
@@ -10,9 +11,11 @@ using WebAPI.Models;
 namespace WebAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20230203142542_add ArtifactEvent")]
+    partial class addArtifactEvent
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "7.0.2");
@@ -96,6 +99,29 @@ namespace WebAPI.Migrations
                     b.ToTable("AbilityType");
                 });
 
+            modelBuilder.Entity("WebAPI.Models.Active", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ImagePath")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Active");
+                });
+
             modelBuilder.Entity("WebAPI.Models.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
@@ -160,6 +186,34 @@ namespace WebAPI.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("WebAPI.Models.Artifact", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ArtifactTypeId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ImagePath")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ArtifactTypeId");
+
+                    b.ToTable("Artifact");
+                });
+
             modelBuilder.Entity("WebAPI.Models.ArtifactEvent", b =>
                 {
                     b.Property<int>("Id")
@@ -169,19 +223,24 @@ namespace WebAPI.Migrations
                     b.Property<int>("Action")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int>("ArtifactId")
-                        .HasColumnType("INTEGER");
+                    b.Property<string>("ArtifactId")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
 
-                    b.Property<int?>("ArtifactTypeId")
+                    b.Property<int>("ArtifactTypeId")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Description")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ImagePath")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<int>("PatchId")
@@ -248,28 +307,32 @@ namespace WebAPI.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("AbilityTypeId")
+                    b.Property<int>("AbilityTypeId")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("Action")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("AugmentCategoryId")
+                    b.Property<int>("AugmentCategoryId")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("AugmentId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Description")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<int>("HeroId")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("ImagePath")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<int>("PatchId")
@@ -310,37 +373,6 @@ namespace WebAPI.Migrations
                     b.HasIndex("AugmentCategoryId");
 
                     b.ToTable("AugmentSlot");
-                });
-
-            modelBuilder.Entity("WebAPI.Models.BoonEvent", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("Action")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("BoonId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ImagePath")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Name")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("PatchId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PatchId");
-
-                    b.ToTable("BoonEvent");
                 });
 
             modelBuilder.Entity("WebAPI.Models.Build", b =>
@@ -549,12 +581,24 @@ namespace WebAPI.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("WebAPI.Models.Artifact", b =>
+                {
+                    b.HasOne("WebAPI.Models.ArtifactType", "ArtifactType")
+                        .WithMany()
+                        .HasForeignKey("ArtifactTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ArtifactType");
+                });
+
             modelBuilder.Entity("WebAPI.Models.ArtifactEvent", b =>
                 {
                     b.HasOne("WebAPI.Models.ArtifactType", "ArtifactType")
                         .WithMany()
                         .HasForeignKey("ArtifactTypeId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("WebAPI.Models.Patch", "Patch")
                         .WithMany()
@@ -583,12 +627,14 @@ namespace WebAPI.Migrations
                     b.HasOne("WebAPI.Models.AbilityType", "AbilityType")
                         .WithMany()
                         .HasForeignKey("AbilityTypeId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("WebAPI.Models.AugmentCategory", "AugmentCategory")
                         .WithMany()
                         .HasForeignKey("AugmentCategoryId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("WebAPI.Models.Hero", "Hero")
                         .WithMany()
@@ -628,17 +674,6 @@ namespace WebAPI.Migrations
                     b.Navigation("AugmentArrangement");
 
                     b.Navigation("AugmentCategory");
-                });
-
-            modelBuilder.Entity("WebAPI.Models.BoonEvent", b =>
-                {
-                    b.HasOne("WebAPI.Models.Patch", "Patch")
-                        .WithMany()
-                        .HasForeignKey("PatchId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Patch");
                 });
 
             modelBuilder.Entity("WebAPI.Models.Build", b =>

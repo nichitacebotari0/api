@@ -12,5 +12,6 @@
         public DateTime CreatedAtUtc { get; set; }
         public DateTime ModifiedAtUtc { get; set; }
         public int HeroId { get; set; }
+        public int PatchId { get; set; }
     }
 }

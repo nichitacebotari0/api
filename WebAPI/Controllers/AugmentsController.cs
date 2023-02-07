@@ -1,10 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using WebAPI.Infrastructure;
 using WebAPI.Infrastructure.Mapping;
 using WebAPI.Models;
-using WebAPI.Services;
 using WebAPI.ViewModels;
 
 namespace WebAPI.Controllers
@@ -15,102 +13,69 @@ namespace WebAPI.Controllers
     public class AugmentsController : ControllerBase
     {
         private readonly ApplicationDbContext context;
-        private readonly IChangeLogger changeLogger;
 
-        public AugmentsController(ApplicationDbContext context, IChangeLogger changeLogger)
+        public AugmentsController(ApplicationDbContext context)
         {
             this.context = context;
-            this.changeLogger = changeLogger;
         }
 
-        // GET: api/Augments
         [HttpGet]
         [AllowAnonymous]
-        public async Task<ActionResult<IEnumerable<AugmentViewModel>>> GetAugment(int? heroId)
+        public async Task<ActionResult<IEnumerable<AugmentViewModel>>> GetAugment([FromQuery] int heroId, [FromQuery] int patchId)
         {
-            if (!heroId.HasValue)
-                return BadRequest("Please specify a hero id");
+            var patch = await context.Patch.FindAsync(patchId);
+            if (patch == null)
+                return BadRequest("No such patch");
 
-            var augments = context.Augment.Where(Augment => Augment.HeroId == heroId);
-            var result = await augments.ToListAsync();
+            var patchEvents = await context.AugmentEvent
+                .Include(x => x.Patch)
+                .Where(x => x.HeroId == heroId && x.Patch.GameDate <= patch.GameDate)
+                .GroupBy(x => x.AugmentId)
+                .Select(g => g.OrderByDescending(x => x.Id).First())
+                .ToListAsync();
 
-            return Ok(result.Select(AugmentMap.MapToViewModel));
+            var result = patchEvents.Where(x => x.Action == EventAction.SET);
+
+            return Ok(result.Select(AugmentEventMap.MapToViewModel));
         }
 
-        // GET: api/Augments/5
-        [HttpGet("{id}")]
-        [AllowAnonymous]
-        public async Task<ActionResult<AugmentViewModel>> GetAugment(int id)
+        [HttpPut]
+        public async Task<ActionResult<AugmentViewModel>> PutAugment(AugmentViewModel augmentViewModel)
         {
-            var augment = await context.Augment.FindAsync(id);
-
-            if (augment == null)
-            {
-                return NotFound();
-            }
-
-            return augment.MapToViewModel();
-        }
-
-        // PUT: api/Augments/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutAugment(int id, AugmentViewModel augmentViewModel)
-        {
-            if (id != augmentViewModel.Id)
-            {
-                return BadRequest();
-            }
-
-            var existing = await context.Augment.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
-
-            if (existing == null)
-                return NotFound();
-
             var augment = augmentViewModel.MapToDTO();
-            var entry = context.Entry(augment);
-            entry.State = EntityState.Modified;
-
-            try
-            {
-                await context.SaveChangesAsync();
-                await changeLogger.Log(User, entry.Entity, existing);
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                throw;
-            }
+            context.AugmentEvent.Add(augment);
+            await context.SaveChangesAsync();
 
             return NoContent();
         }
 
-        // POST: api/Augments
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<AugmentViewModel>> PostAugment(AugmentViewModel augmentViewModel)
         {
-            var augment = augmentViewModel.MapToDTO();
-            context.Augment.Add(augment);
+            using var transaction = await context.Database.BeginTransactionAsync();
+            var augmentEvent = augmentViewModel.MapToDTO();
+            augmentEvent.AugmentId = await context.AugmentEvent.MaxAsync(x => x.AugmentId) + 1;
+            context.AugmentEvent.Add(augmentEvent);
             await context.SaveChangesAsync();
-            await changeLogger.Log(User, augment, null);
+            await transaction.CommitAsync();
 
-            return CreatedAtAction("GetAugment", new { id = augment.Id }, augmentViewModel);
+            return Ok(augmentEvent.MapToViewModel());
         }
 
-        // DELETE: api/Augments/5
         [HttpDelete("{id}")]
         [Authorize(Policy = "Super")]
-        public async Task<IActionResult> DeleteAugment(int id)
+        public async Task<IActionResult> DeleteAugment(int id, [FromQuery] int heroId, [FromQuery] int patchId)
         {
-            var augment = await context.Augment.FindAsync(id);
-            if (augment == null)
+            var deleteEvent = new AugmentEvent()
             {
-                return NotFound();
-            }
+                Action = EventAction.DELETE,
+                AugmentId = id,
+                PatchId = patchId,
+                HeroId = heroId
+            };
 
-            context.Augment.Remove(augment);
+            context.AugmentEvent.Add(deleteEvent);
             await context.SaveChangesAsync();
-            await changeLogger.Log(User, null, augment);
 
             return NoContent();
         }

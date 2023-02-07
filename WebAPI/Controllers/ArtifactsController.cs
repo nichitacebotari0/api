@@ -1,11 +1,8 @@
-﻿using System;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using WebAPI.Infrastructure;
 using WebAPI.Infrastructure.Mapping;
 using WebAPI.Models;
-using WebAPI.Services;
 using WebAPI.ViewModels;
 
 namespace WebAPI.Controllers
@@ -16,109 +13,70 @@ namespace WebAPI.Controllers
     public class ArtifactsController : ControllerBase
     {
         private readonly ApplicationDbContext context;
-        private readonly IChangeLogger changeLogger;
 
-        public ArtifactsController(ApplicationDbContext context, IChangeLogger changeLogger)
+        public ArtifactsController(ApplicationDbContext context)
         {
             this.context = context;
-            this.changeLogger = changeLogger;
         }
 
-        // GET: api/Artifacts
         [HttpGet]
         [AllowAnonymous]
-        public async Task<ActionResult<IEnumerable<ArtifactViewModel>>> GetArtifact()
+        public async Task<ActionResult<IEnumerable<ArtifactViewModel>>> GetArtifact([FromQuery] int patchId)
         {
-            var artifacts = await context.Artifact.ToListAsync();
+            var patch = await context.Patch.FindAsync(patchId);
+            if (patch == null)
+                return BadRequest("No such patch");
 
-            return Ok(artifacts.Select(ArtifactMap.MapToViewModel));
+            var patchEvents = await context.ArtifactEvent
+                .Include(x => x.Patch)
+                .Where(x => x.Patch.GameDate <= patch.GameDate)
+                .GroupBy(x => x.ArtifactId)
+                .Select(g => g.OrderByDescending(x => x.Id).First())
+                .ToListAsync();
+
+            var result = patchEvents.Where(x => x.Action == EventAction.SET);
+
+            return Ok(result.Select(ArtifactMap.MapToViewModel));
         }
 
-        // GET: api/Artifacts/5
-        [HttpGet("{id}")]
-        [AllowAnonymous]
-        public async Task<ActionResult<ArtifactViewModel>> GetArtifact(int id)
+        [HttpPut]
+        public async Task<IActionResult> PutArtifact(ArtifactViewModel artifactViewModel)
         {
-            var artifact = await context.Artifact.FindAsync(id);
-
-            if (artifact == null)
-            {
-                return NotFound();
-            }
-
-            return artifact.MapToViewModel();
-        }
-
-        // PUT: api/Artifacts/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutArtifact(int id, ArtifactViewModel artifactViewModel)
-        {
-            if (id != artifactViewModel.Id)
-            {
-                return BadRequest();
-            }
-
-            var existing = await context.Artifact.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
-
-            var artifact = artifactViewModel.MapToDTO();
-            var entry = context.Entry(artifact);
-            entry.State = EntityState.Modified;
-
-            try
-            {
-                await context.SaveChangesAsync();
-                await changeLogger.Log(User, entry.Entity, existing);
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!ArtifactExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
+            var artifactEvent = artifactViewModel.MapToDTO();
+            context.ArtifactEvent.Add(artifactEvent);
+            await context.SaveChangesAsync();
 
             return NoContent();
         }
 
-        // POST: api/Artifacts
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<ArtifactViewModel>> PostArtifact(ArtifactViewModel artifactViewModel)
         {
-            var artifact = artifactViewModel.MapToDTO();
-            context.Artifact.Add(artifact);
+            using var transaction = await context.Database.BeginTransactionAsync();
+            var artifactEvent = artifactViewModel.MapToDTO();
+            artifactEvent.ArtifactId = await context.ArtifactEvent.MaxAsync(x => x.ArtifactId) + 1;
+            context.ArtifactEvent.Add(artifactEvent);
             await context.SaveChangesAsync();
-            await changeLogger.Log(User, artifact, null);
+            await transaction.CommitAsync();
 
-            return CreatedAtAction("GetArtifact", new { id = artifact.Id }, artifactViewModel);
+            return Ok(artifactEvent.MapToViewModel());
         }
 
-        // DELETE: api/Artifacts/5
         [HttpDelete("{id}")]
         [Authorize(Policy = "Super")]
-        public async Task<IActionResult> DeleteArtifact(int id)
+        public async Task<IActionResult> DeleteArtifact(int id, [FromQuery] int patchId)
         {
-            var artifact = await context.Artifact.FindAsync(id);
-            if (artifact == null)
+            var deleteEvent = new ArtifactEvent()
             {
-                return NotFound();
-            }
+                Action = EventAction.DELETE,
+                ArtifactId = id,
+                PatchId = patchId
+            };
 
-            context.Artifact.Remove(artifact);
+            context.ArtifactEvent.Add(deleteEvent);
             await context.SaveChangesAsync();
-            await changeLogger.Log(User, null, artifact);
 
             return NoContent();
-        }
-
-        private bool ArtifactExists(int id)
-        {
-            return context.Artifact.Any(e => e.Id == id);
         }
     }
 }

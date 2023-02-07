@@ -14,7 +14,7 @@ namespace WebAPI.Infrastructure.Mapping
                 Augments = viewModel.Augments,
                 Description = viewModel.Description,
                 ModifiedAtUtc = viewModel.ModifiedAtUtc,
-                HeroId = viewModel.HeroId
+                HeroId = viewModel.HeroId,
             };
         }
 
@@ -31,7 +31,8 @@ namespace WebAPI.Infrastructure.Mapping
                 ModifiedAtUtc = model.ModifiedAtUtc,
                 Upvotes = model.Upvotes,
                 Downvotes = model.Downvotes,
-                HeroId = model.HeroId
+                HeroId = model.HeroId,
+                PatchId = model.PatchId,
             };
         }
     }

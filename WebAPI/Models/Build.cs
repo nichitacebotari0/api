@@ -17,6 +17,7 @@ namespace WebAPI.Models
         public DateTime ModifiedAtUtc { get; set; }
         public int HeroId { get; set; }
         public Hero Hero { get; set; }
+        public int PatchId { get; set; }
 
         public override string ToString()
         {

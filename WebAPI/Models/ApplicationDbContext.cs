@@ -1,5 +1,4 @@
-﻿using System.Reflection.Emit;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace WebAPI.Models
@@ -12,11 +11,11 @@ namespace WebAPI.Models
 
         public DbSet<Hero> Hero { get; set; }
         public DbSet<HeroClass> HeroClass { get; set; }
-        public DbSet<Augment> Augment { get; set; }
+        public DbSet<AugmentEvent> AugmentEvent { get; set; }
         public DbSet<AugmentCategory> AugmentCategory { get; set; }
         public DbSet<AbilityType> AbilityType { get; set; }
-        public DbSet<Active> Active { get; set; }
-        public DbSet<Artifact> Artifact { get; set; }
+        public DbSet<BoonEvent> BoonEvent { get; set; }
+        public DbSet<ArtifactEvent> ArtifactEvent { get; set; }
         public DbSet<ArtifactType> ArtifactType { get; set; }
         public DbSet<Build> Build { get; set; }
         public DbSet<BuildVote> BuildVote { get; set; }
@@ -27,6 +26,11 @@ namespace WebAPI.Models
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
+            foreach (var relationship in builder.Model.GetEntityTypes().Where(e => !e.IsOwned()).SelectMany(e => e.GetForeignKeys()))
+            {
+                relationship.DeleteBehavior = DeleteBehavior.Restrict;
+            }
+
             base.OnModelCreating(builder);
 
             // innitial patch

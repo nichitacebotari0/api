@@ -5,27 +5,29 @@ namespace WebAPI.Infrastructure.Mapping
 {
     public static class ArtifactMap
     {
-        public static Artifact MapToDTO(this ArtifactViewModel viewModel)
+        public static ArtifactEvent MapToDTO(this ArtifactViewModel viewModel)
         {
-            return new Artifact()
+            return new ArtifactEvent()
             {
-                Id = viewModel.Id,
+                ArtifactId = viewModel.Id,
                 Name = viewModel.Name,
                 Description = viewModel.Description,
                 ImagePath = viewModel.ImagePath,
                 ArtifactTypeId = viewModel.ArtifactTypeId,
+                PatchId = viewModel.PatchId,
             };
         }
 
-        public static ArtifactViewModel MapToViewModel(this Artifact model)
+        public static ArtifactViewModel MapToViewModel(this ArtifactEvent model)
         {
             return new ArtifactViewModel()
             {
-                Id = model.Id,
+                Id = model.ArtifactId,
                 Name = model.Name,
                 Description = model.Description,
                 ImagePath = model.ImagePath,
                 ArtifactTypeId = model.ArtifactTypeId,
+                PatchId = model.PatchId,
             };
         }
     }

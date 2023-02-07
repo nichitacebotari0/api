@@ -93,7 +93,7 @@ namespace WebAPI.Controllers
             {
                 return BadRequest();
             }
-            using var transaction = dbContext.Database.BeginTransaction();
+            using var transaction = await dbContext.Database.BeginTransactionAsync();
             var vote = await dbContext.BuildVote
                 .Include(x => x.Build)
                 .FirstOrDefaultAsync(x => x.Id == id);
@@ -127,7 +127,7 @@ namespace WebAPI.Controllers
 
             await dbContext.SaveChangesAsync();
             await changeLogger.Log(nameof(BuildVote), User, GetVoteLog(vote), previousVoteLog);
-            transaction.Commit();
+            await transaction.CommitAsync();
 
             return NoContent();
         }
@@ -141,7 +141,7 @@ namespace WebAPI.Controllers
                 return BadRequest("no user id present");
             }
 
-            using var transaction = dbContext.Database.BeginTransaction();
+            using var transaction = await dbContext.Database.BeginTransactionAsync();
             var build = await dbContext.Build.FindAsync(buildVoteViewModel.BuildId);
             if (build == null)
             {
@@ -163,8 +163,8 @@ namespace WebAPI.Controllers
 
             await dbContext.SaveChangesAsync();
             await changeLogger.Log(User, GetVoteLog(vote));
+            await transaction.CommitAsync();
             buildVoteViewModel.Id = vote.Id;
-            transaction.Commit();
 
             return CreatedAtAction("GetVote", new { buildId = build.Id }, buildVoteViewModel);
         }
@@ -172,7 +172,7 @@ namespace WebAPI.Controllers
         [HttpDelete("vote/{id}")]
         public async Task<IActionResult> DeleteVote(int id)
         {
-            using var transaction = dbContext.Database.BeginTransaction();
+            using var transaction = await dbContext.Database.BeginTransactionAsync();
             var vote = await dbContext.BuildVote
                 .Include(x => x.Build)
                 .FirstOrDefaultAsync(x => x.Id == id);
@@ -199,7 +199,7 @@ namespace WebAPI.Controllers
             dbContext.BuildVote.Remove(vote);
             await dbContext.SaveChangesAsync();
             await changeLogger.Log(User, null, GetVoteLog(vote));
-            transaction.Commit();
+            await transaction.CommitAsync();
 
             return NoContent();
         }
